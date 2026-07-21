@@ -1,4 +1,4 @@
-# 💇 Salon Booking API
+#  Salon Booking API
 
 A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API provides complete CRUD (Create, Read, Update, Delete) functionality and follows RESTful design principles. It has been thoroughly tested using **Postman**, including successful requests, validation checks, and error handling.
 

@@ -31,18 +31,15 @@ A RESTful API built with **Node.js** and **Express.js** for managing salon appoi
 
 ```text
 salon-booking-api/
-│── controllers/
-│── routes/
-│── postman/
-│── .postman/
-│── screenshots/
-│── server.js
-│── package.json
-│── package-lock.json
-│── README.md
+├── .postman/
+├── postman/
+├── screenshots/
+├── .gitignore
+├── package.json
+├── package-lock.json
+├── README.md
+└── server.js
 ```
-
----
 
 ## ⚙️ Installation
 

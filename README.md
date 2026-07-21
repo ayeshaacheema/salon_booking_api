@@ -1,28 +1,49 @@
 # Salon Booking API
 
-A simple REST API built with Express.js.
+A REST API built with Node.js and Express.js that manages salon bookings using an in-memory array.
 
-## Endpoints
+## Features
 
-GET /bookings
-Returns all bookings.
+- Create booking
+- Get all bookings
+- Get single booking
+- Update booking
+- Delete booking
+- Request logging middleware
 
-GET /bookings/:id
-Returns one booking.
+## Installation
 
-POST /bookings
-Creates a booking.
-
-PUT /bookings/:id
-Updates a booking.
-
-DELETE /bookings/:id
-Deletes a booking.
+```bash
+npm install
+```
 
 ## Run
 
-npm install
-
+```bash
 npm run dev
+```
 
 Server runs on port 3000.
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /bookings | Get all bookings |
+| GET | /bookings/:id | Get one booking |
+| POST | /bookings | Create booking |
+| PUT | /bookings/:id | Update booking |
+| DELETE | /bookings/:id | Delete booking |
+
+## Sample Booking
+
+```json
+{
+  "service": "Haircut",
+  "date": "2026-07-20",
+  "time": "2:00 PM",
+  "name": "Ayesha",
+  "phone": "03001234567",
+  "notes": "Near window seat"
+}
+```

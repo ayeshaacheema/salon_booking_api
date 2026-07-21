@@ -167,6 +167,3 @@ GitHub: **https://github.com/ayeshaacheema**
 
 ---
 
-## 📄 License
-
-This project was developed for learning and educational purposes.

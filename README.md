@@ -1,10 +1,28 @@
 # Salon Booking API
 
-Backend API for Salon of Beauty appointment booking system.
+A simple REST API built with Express.js.
 
-Currently built using:
+## Endpoints
 
-- Node.js
-- Express
+GET /bookings
+Returns all bookings.
 
-This project is part of my Backend Development Internship at Neurofive Solutions.
+GET /bookings/:id
+Returns one booking.
+
+POST /bookings
+Creates a booking.
+
+PUT /bookings/:id
+Updates a booking.
+
+DELETE /bookings/:id
+Deletes a booking.
+
+## Run
+
+npm install
+
+npm run dev
+
+Server runs on port 3000.

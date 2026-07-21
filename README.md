@@ -1,20 +1,19 @@
 # 💇 Salon Booking API
 
-A RESTful API for managing salon appointments, built with **Node.js**, **Express.js**, and **MongoDB**. This API allows users to create, retrieve, update, and delete salon bookings while validating input data and handling errors gracefully.
+A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API supports full CRUD (Create, Read, Update, Delete) operations and has been thoroughly tested using Postman.
 
 ---
 
 ## 🚀 Features
 
 - Create a new booking
-- View all bookings
-- View a single booking by ID
+- Retrieve all bookings
+- Retrieve a booking by ID
 - Update an existing booking
 - Delete a booking
 - Input validation
-- Proper HTTP status codes
-- Error handling
-- MongoDB database integration
+- Proper error handling
+- RESTful API design
 - Fully tested using Postman
 
 ---
@@ -23,24 +22,23 @@ A RESTful API for managing salon appointments, built with **Node.js**, **Express
 
 - Node.js
 - Express.js
-- MongoDB
-- Mongoose
+- JavaScript
 - Postman
 
 ---
 
 ## 📁 Project Structure
 
-```
+```text
 salon-booking-api/
-│── models/
-│── routes/
 │── controllers/
-│── screenshots/
+│── routes/
 │── postman/
 │── .postman/
+│── screenshots/
 │── server.js
 │── package.json
+│── package-lock.json
 │── README.md
 ```
 
@@ -66,18 +64,7 @@ cd salon_booking_api
 npm install
 ```
 
-### 4. Configure environment variables
-
-Create a `.env` file in the project root.
-
-Example:
-
-```env
-MONGODB_URI=your_mongodb_connection_string
-PORT=3000
-```
-
-### 5. Start the server
+### 4. Start the server
 
 ```bash
 npm start
@@ -89,7 +76,7 @@ or
 npm run dev
 ```
 
-The server will run on:
+The server will start on:
 
 ```
 http://localhost:3000
@@ -99,31 +86,21 @@ http://localhost:3000
 
 # 📌 API Endpoints
 
-## GET all bookings
+## GET /bookings
 
-```
-GET /bookings
-```
-
-Returns a list of all bookings.
+Retrieve all bookings.
 
 ---
 
-## GET booking by ID
+## GET /bookings/:id
 
-```
-GET /bookings/:id
-```
-
-Returns a single booking.
+Retrieve a specific booking by its ID.
 
 ---
 
-## POST create booking
+## POST /bookings
 
-```
-POST /bookings
-```
+Create a new booking.
 
 Example request body:
 
@@ -139,49 +116,40 @@ Example request body:
 
 ---
 
-## PUT update booking
+## PUT /bookings/:id
 
-```
-PUT /bookings/:id
-```
-
-Updates an existing booking.
+Update an existing booking.
 
 ---
 
-## DELETE booking
+## DELETE /bookings/:id
 
-```
-DELETE /bookings/:id
-```
-
-Deletes a booking.
+Delete a booking.
 
 ---
 
-# ✅ Postman Testing
+# ✅ API Testing
 
-The API has been thoroughly tested using **Postman**.
+The API has been fully tested using **Postman**.
 
 ### Tested Endpoints
 
-- ✅ GET All Bookings
-- ✅ GET Booking by ID
-- ✅ POST Create Booking
-- ✅ PUT Update Booking
-- ✅ DELETE Booking
+- ✅ GET /bookings
+- ✅ GET /bookings/:id
+- ✅ POST /bookings
+- ✅ PUT /bookings/:id
+- ✅ DELETE /bookings/:id
 
 ### Validation Tested
 
 - Missing required fields
-- Invalid MongoDB Object IDs
-- Non-existent bookings
-- Successful CRUD operations
+- Invalid booking IDs
 - Invalid request data
+- Successful CRUD operations
 
-The Postman collection and related files are included in this repository.
+The Postman collection and workspace files are included in this repository.
 
-```
+```text
 postman/
 .postman/
 ```
@@ -190,48 +158,18 @@ postman/
 
 # 📸 Screenshots
 
-Screenshots demonstrating API functionality are available in the `screenshots/` folder.
+The `screenshots/` folder contains examples of:
 
-Examples include:
-
-- Get All Bookings
-- Get Booking by ID
-- Create Booking
-- Update Booking
-- Delete Booking
-- Validation Error
+- Successful GET requests
+- Successful POST requests
+- Successful PUT requests
+- Successful DELETE requests
+- Validation and error responses
 
 ---
 
-# 📬 Sample Response
-
-```json
-{
-  "_id": "...",
-  "customerName": "Ayesha Cheema",
-  "service": "Haircut",
-  "date": "2026-07-22",
-  "time": "2:00 PM",
-  "phone": "03001234567"
-}
-```
-
----
-
-# 👩‍💻 Author
+## 👩‍💻 Author
 
 **Ayesha Cheema**
 
-GitHub:
-https://github.com/ayeshaacheema
-
----
-
-## ⭐ Future Improvements
-
-- User authentication
-- JWT authorization
-- Online payment integration
-- Appointment availability checking
-- Email notifications
-- Swagger API documentation
+GitHub: https://github.com/ayeshaacheema

@@ -1,20 +1,20 @@
 # 💇 Salon Booking API
 
-A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API supports full CRUD (Create, Read, Update, Delete) operations and has been thoroughly tested using Postman.
+A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API provides complete CRUD (Create, Read, Update, Delete) functionality and follows RESTful design principles. It has been thoroughly tested using **Postman**, including successful requests, validation checks, and error handling.
 
 ---
 
 ## 🚀 Features
 
-- Create a new booking
+- Create a new salon booking
 - Retrieve all bookings
-- Retrieve a booking by ID
+- Retrieve a booking by its ID
 - Update an existing booking
 - Delete a booking
 - Input validation
-- Proper error handling
-- RESTful API design
-- Fully tested using Postman
+- Consistent error handling
+- RESTful API architecture
+- Comprehensive API testing with Postman
 
 ---
 
@@ -41,6 +41,17 @@ salon-booking-api/
 └── server.js
 ```
 
+---
+
+## 📋 Prerequisites
+
+Before running the project, ensure you have the following installed:
+
+- Node.js
+- npm (comes with Node.js)
+
+---
+
 ## ⚙️ Installation
 
 ### 1. Clone the repository
@@ -49,7 +60,7 @@ salon-booking-api/
 git clone https://github.com/ayeshaacheema/salon_booking_api.git
 ```
 
-### 2. Navigate to the project
+### 2. Navigate to the project directory
 
 ```bash
 cd salon_booking_api
@@ -67,39 +78,35 @@ npm install
 npm start
 ```
 
-or
+or, if using Nodemon:
 
 ```bash
 npm run dev
 ```
 
-The server will start on:
+The server will run at:
 
-```
+```text
 http://localhost:3000
 ```
 
 ---
 
-# 📌 API Endpoints
+## 📌 API Endpoints
 
-## GET /bookings
-
-Retrieve all bookings.
-
----
-
-## GET /bookings/:id
-
-Retrieve a specific booking by its ID.
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/bookings` | Retrieve all bookings |
+| GET | `/bookings/:id` | Retrieve a booking by ID |
+| POST | `/bookings` | Create a new booking |
+| PUT | `/bookings/:id` | Update an existing booking |
+| DELETE | `/bookings/:id` | Delete a booking |
 
 ---
 
-## POST /bookings
+## 📝 Sample Request
 
-Create a new booking.
-
-Example request body:
+### POST `/bookings`
 
 ```json
 {
@@ -113,55 +120,42 @@ Example request body:
 
 ---
 
-## PUT /bookings/:id
+## ✅ API Testing
 
-Update an existing booking.
+The API has been thoroughly tested using **Postman** to verify both functionality and error handling.
 
----
+### Test Coverage
 
-## DELETE /bookings/:id
+- ✅ Retrieve all bookings
+- ✅ Retrieve a booking by ID
+- ✅ Create a new booking
+- ✅ Update an existing booking
+- ✅ Delete a booking
+- ✅ Missing required fields validation
+- ✅ Invalid booking ID validation
+- ✅ Invalid request handling
+- ✅ Successful CRUD operations
 
-Delete a booking.
+### Included in this Repository
 
----
-
-# ✅ API Testing
-
-The API has been fully tested using **Postman**.
-
-### Tested Endpoints
-
-- ✅ GET /bookings
-- ✅ GET /bookings/:id
-- ✅ POST /bookings
-- ✅ PUT /bookings/:id
-- ✅ DELETE /bookings/:id
-
-### Validation Tested
-
-- Missing required fields
-- Invalid booking IDs
-- Invalid request data
-- Successful CRUD operations
-
-The Postman collection and workspace files are included in this repository.
-
-```text
-postman/
-.postman/
-```
+- `postman/` – Postman collection
+- `.postman/` – Postman workspace files
+- `screenshots/` – Screenshots demonstrating API testing
 
 ---
 
-# 📸 Screenshots
+## 📸 Screenshots
 
-The `screenshots/` folder contains examples of:
+The `screenshots/` folder contains screenshots of:
 
-- Successful GET requests
-- Successful POST requests
-- Successful PUT requests
-- Successful DELETE requests
+- GET all bookings
+- GET booking by ID
+- POST booking
+- PUT booking
+- DELETE booking
 - Validation and error responses
+
+> You can also display the screenshots directly in this README by adding image links after uploading them to the repository.
 
 ---
 
@@ -169,4 +163,10 @@ The `screenshots/` folder contains examples of:
 
 **Ayesha Cheema**
 
-GitHub: https://github.com/ayeshaacheema
+GitHub: **https://github.com/ayeshaacheema**
+
+---
+
+## 📄 License
+
+This project was developed for learning and educational purposes.

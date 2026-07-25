@@ -1,110 +1,255 @@
-Salon Booking API
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+# Salon Booking API
 
-Tech Stack
-Node.js / Express
-PostgreSQL + Sequelize
-bcrypt for password hashing
-jsonwebtoken for auth
-Postman for testing
-Project Structure
-salon-booking-api/
+A REST API for managing salon bookings built with Node.js, Express, PostgreSQL, and Sequelize. The API supports user authentication using JWT and provides CRUD operations for managing salon bookings.
+
+## Features
+
+- User signup and login
+- JWT-based authentication
+- Password hashing with bcrypt
+- PostgreSQL database integration
+- Sequelize ORM
+- CRUD operations for bookings
+- Automatic database table creation
+- Environment variable configuration
+- Tested using Postman
+
+## Technologies
+
+- Node.js
+- Express.js
+- PostgreSQL
+- Sequelize
+- bcrypt
+- JSON Web Token (JWT)
+- dotenv
+- Postman
+
+## Project Structure
+
+```text
+salon_booking_api/
+│
 ├── models/
-│   ├── Service.js
 │   ├── Booking.js
+│   ├── Service.js
 │   └── User.js
+│
 ├── middleware/
 │   └── auth.js
+│
 ├── db.js
 ├── server.js
-├── .env
 ├── .env.example
+├── package.json
 ├── postman/
 ├── screenshots/
 └── README.md
-Setup
-Clone the repo
+```
+
+## Installation
+
+### Clone the repository
+
+```bash
 git clone https://github.com/ayeshaacheema/salon_booking_api.git
 cd salon_booking_api
-Install dependencies
+```
+
+### Install dependencies
+
+```bash
 npm install
-Set up PostgreSQL - create a database:
+```
+
+### Create the database
+
+```sql
 CREATE DATABASE salon_booking_db;
-Create a .env file in the root (there's an .env.example you can copy from):
+```
+
+### Configure environment variables
+
+Create a `.env` file in the project root.
+
+```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=salon_booking_db
 DB_USER=postgres
 DB_PASSWORD=your_password
+
 JWT_SECRET=your_random_secret
 JWT_EXPIRES_IN=1h
-You can generate a random secret with:
+```
 
+Generate a secure JWT secret with:
+
+```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-Run it
+```
+
+### Run the server
+
+```bash
 node server.js
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
+```
 
-Database
-Two related tables:
+When the server starts, Sequelize automatically creates the required database tables if they do not already exist.
 
-Services - id, name
-Bookings - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
-A booking belongs to a service, a service can have many bookings.
+## Database
 
-Endpoints
-Method	Route	Description	Needs token?
-POST	/auth/signup	create a new user	no
-POST	/auth/login	log in, get back a token	no
-GET	/bookings	list all bookings	no
-GET	/bookings/:id	get one booking	no
-POST	/bookings	create a booking	yes
-PUT	/bookings/:id	update a booking	no
-DELETE	/bookings/:id	delete a booking	yes
-Sample: create a booking
-POST /bookings
+The application contains three models.
+
+### User
+
+| Field | Type |
+|------|------|
+| id | Integer |
+| email | String |
+| password | String (hashed) |
+
+### Service
+
+| Field | Type |
+|------|------|
+| id | Integer |
+| name | String |
+
+### Booking
+
+| Field | Type |
+|------|------|
+| id | Integer |
+| date | Date |
+| time | String |
+| name | String |
+| phone | String |
+| notes | String |
+| serviceId | Foreign Key |
+
+### Relationships
+
+- A service can have many bookings.
+- A booking belongs to one service.
+
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/signup` | Register a new user |
+| POST | `/auth/login` | Login and receive a JWT |
+
+### Bookings
+
+| Method | Endpoint | Authentication |
+|--------|----------|----------------|
+| GET | `/bookings` | No |
+| GET | `/bookings/:id` | No |
+| POST | `/bookings` | Yes |
+| PUT | `/bookings/:id` | No |
+| DELETE | `/bookings/:id` | Yes |
+
+## Example Request
+
+**POST** `/bookings`
+
+```json
 {
   "service": "Haircut",
   "date": "2026-07-28",
   "time": "3:00 PM",
   "name": "Ayesha Cheema",
   "phone": "03001234567",
-  "notes": "First time client"
+  "notes": "First-time client"
 }
-Auth
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
+```
 
-Signup
+## Authentication
 
+### Signup
+
+```http
 POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
-Login - returns a JWT
+```
 
+```json
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+```
+
+### Login
+
+```http
 POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
-response:
+```
 
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
-To hit a protected route, add this header:
+```json
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+```
 
-Authorization: Bearer <token>
-POST /bookings and DELETE /bookings/:id require this. The rest don't.
+Example response:
 
-Token expires based on JWT_EXPIRES_IN in .env (currently 1h).
+```json
+{
+  "message": "Login successful!",
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
 
-Error responses
-Case	Status	Message
-wrong email/password	401	Invalid email or password.
-no token sent	401	No token provided.
-token expired	401	Token has expired. Please log in again.
-bad/tampered token	403	Invalid token.
-email already taken	400	Email already in use.
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
+Include the token in the request header when accessing protected routes.
 
-Testing
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in postman/, some screenshots in screenshots/.
+```http
+Authorization: Bearer <your_token>
+```
 
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
+Protected routes:
 
-Author
-Ayesha Cheema github.com/ayeshaacheema
+- POST `/bookings`
+- DELETE `/bookings/:id`
+
+The token expiration time is controlled through the `JWT_EXPIRES_IN` environment variable.
+
+## Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Email already in use |
+| 401 | Invalid email or password |
+| 401 | No token provided |
+| 401 | Token has expired |
+| 403 | Invalid token |
+
+For security reasons, the login endpoint returns the same message whether the email does not exist or the password is incorrect.
+
+## Testing
+
+The API was tested using Postman.
+
+The following scenarios were verified:
+
+- User signup
+- User login
+- JWT authentication
+- Create booking
+- Retrieve all bookings
+- Retrieve a booking by ID
+- Update booking
+- Delete booking
+- Invalid requests
+- Authentication errors
+
+The Postman collection is available in the `postman` folder.
+
+## Author
+
+**Ayesha Cheema**
+
+GitHub: https://github.com/ayeshaacheema

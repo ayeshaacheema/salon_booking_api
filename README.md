@@ -1,169 +1,110 @@
-#  Salon Booking API
+Salon Booking API
+A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
 
-A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API provides complete CRUD (Create, Read, Update, Delete) functionality and follows RESTful design principles. It has been thoroughly tested using **Postman**, including successful requests, validation checks, and error handling.
-
----
-
-## 🚀 Features
-
-- Create a new salon booking
-- Retrieve all bookings
-- Retrieve a booking by its ID
-- Update an existing booking
-- Delete a booking
-- Input validation
-- Consistent error handling
-- RESTful API architecture
-- Comprehensive API testing with Postman
-
----
-
-## 🛠️ Tech Stack
-
-- Node.js
-- Express.js
-- JavaScript
-- Postman
-
----
-
-## 📁 Project Structure
-
-```text
+Tech Stack
+Node.js / Express
+PostgreSQL + Sequelize
+bcrypt for password hashing
+jsonwebtoken for auth
+Postman for testing
+Project Structure
 salon-booking-api/
-├── .postman/
+├── models/
+│   ├── Service.js
+│   ├── Booking.js
+│   └── User.js
+├── middleware/
+│   └── auth.js
+├── db.js
+├── server.js
+├── .env
+├── .env.example
 ├── postman/
 ├── screenshots/
-├── .gitignore
-├── package.json
-├── package-lock.json
-├── README.md
-└── server.js
-```
-
----
-
-## 📋 Prerequisites
-
-Before running the project, ensure you have the following installed:
-
-- Node.js
-- npm (comes with Node.js)
-
----
-
-## ⚙️ Installation
-
-### 1. Clone the repository
-
-```bash
+└── README.md
+Setup
+Clone the repo
 git clone https://github.com/ayeshaacheema/salon_booking_api.git
-```
-
-### 2. Navigate to the project directory
-
-```bash
 cd salon_booking_api
-```
-
-### 3. Install dependencies
-
-```bash
+Install dependencies
 npm install
-```
+Set up PostgreSQL - create a database:
+CREATE DATABASE salon_booking_db;
+Create a .env file in the root (there's an .env.example you can copy from):
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=salon_booking_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+JWT_SECRET=your_random_secret
+JWT_EXPIRES_IN=1h
+You can generate a random secret with:
 
-### 4. Start the server
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+Run it
+node server.js
+Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
 
-```bash
-npm start
-```
+Database
+Two related tables:
 
-or, if using Nodemon:
+Services - id, name
+Bookings - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
+A booking belongs to a service, a service can have many bookings.
 
-```bash
-npm run dev
-```
-
-The server will run at:
-
-```text
-http://localhost:3000
-```
-
----
-
-## 📌 API Endpoints
-
-| Method | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/bookings` | Retrieve all bookings |
-| GET | `/bookings/:id` | Retrieve a booking by ID |
-| POST | `/bookings` | Create a new booking |
-| PUT | `/bookings/:id` | Update an existing booking |
-| DELETE | `/bookings/:id` | Delete a booking |
-
----
-
-## 📝 Sample Request
-
-### POST `/bookings`
-
-```json
+Endpoints
+Method	Route	Description	Needs token?
+POST	/auth/signup	create a new user	no
+POST	/auth/login	log in, get back a token	no
+GET	/bookings	list all bookings	no
+GET	/bookings/:id	get one booking	no
+POST	/bookings	create a booking	yes
+PUT	/bookings/:id	update a booking	no
+DELETE	/bookings/:id	delete a booking	yes
+Sample: create a booking
+POST /bookings
 {
-  "customerName": "Ayesha Cheema",
   "service": "Haircut",
-  "date": "2026-07-22",
-  "time": "2:00 PM",
-  "phone": "03001234567"
+  "date": "2026-07-28",
+  "time": "3:00 PM",
+  "name": "Ayesha Cheema",
+  "phone": "03001234567",
+  "notes": "First time client"
 }
-```
+Auth
+Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
 
----
+Signup
 
-## ✅ API Testing
+POST /auth/signup
+{ "email": "you@example.com", "password": "yourpassword" }
+Login - returns a JWT
 
-The API has been thoroughly tested using **Postman** to verify both functionality and error handling.
+POST /auth/login
+{ "email": "you@example.com", "password": "yourpassword" }
+response:
 
-### Test Coverage
+{ "message": "Login successful!", "token": "eyJhbGciOi..." }
+To hit a protected route, add this header:
 
-- ✅ Retrieve all bookings
-- ✅ Retrieve a booking by ID
-- ✅ Create a new booking
-- ✅ Update an existing booking
-- ✅ Delete a booking
-- ✅ Missing required fields validation
-- ✅ Invalid booking ID validation
-- ✅ Invalid request handling
-- ✅ Successful CRUD operations
+Authorization: Bearer <token>
+POST /bookings and DELETE /bookings/:id require this. The rest don't.
 
-### Included in this Repository
+Token expires based on JWT_EXPIRES_IN in .env (currently 1h).
 
-- `postman/` – Postman collection
-- `.postman/` – Postman workspace files
-- `screenshots/` – Screenshots demonstrating API testing
+Error responses
+Case	Status	Message
+wrong email/password	401	Invalid email or password.
+no token sent	401	No token provided.
+token expired	401	Token has expired. Please log in again.
+bad/tampered token	403	Invalid token.
+email already taken	400	Email already in use.
+(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
 
----
+Testing
+Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in postman/, some screenshots in screenshots/.
 
-## 📸 Screenshots
+Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
 
-The `screenshots/` folder contains screenshots of:
-
-- GET all bookings
-- GET booking by ID
-- POST booking
-- PUT booking
-- DELETE booking
-- Validation and error responses
-
-> You can also display the screenshots directly in this README by adding image links after uploading them to the repository.
-
----
-
-## 👩‍💻 Author
-
-**Ayesha Cheema**
-
-GitHub: **https://github.com/ayeshaacheema**
-
----
-
+Author
+Ayesha Cheema github.com/ayeshaacheema

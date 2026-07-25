@@ -1,183 +1,147 @@
 # Salon Booking API
 
-A RESTful API built with **Node.js** and **Express.js** for managing salon appointments. The API provides complete CRUD (Create, Read, Update, Delete) functionality and follows RESTful design principles, backed by a **PostgreSQL** database with a relational schema. It has been thoroughly tested using **Postman**, including successful requests, validation checks, and error handling.
+A RESTful API for managing salon bookings built with Node.js, Express.js, PostgreSQL, and Sequelize. The project provides CRUD operations for bookings using a relational database instead of in-memory storage. It was tested using Postman to verify functionality, validation, and error handling.
 
----
+## Features
 
-## 🚀 Features
-
-- Create a new salon booking
-- Retrieve all bookings
-- Retrieve a booking by its ID
-- Update an existing booking
-- Delete a booking
+- Create, retrieve, update, and delete bookings
+- Store data in PostgreSQL
+- Relational database design using Sequelize
 - Input validation
-- Consistent error handling
-- Persistent storage in PostgreSQL (survives server restarts)
-- Relational schema: bookings linked to services
-- Graceful handling of database connection failures
-- RESTful API architecture
-- Comprehensive API testing with Postman
+- Error handling
+- Automatic table creation on startup
+- Database connection checks
+- RESTful API design
+- Tested with Postman
 
----
-
-## 🛠️ Tech Stack
+## Technologies
 
 - Node.js
 - Express.js
 - PostgreSQL
-- Sequelize (ORM)
+- Sequelize
 - JavaScript
 - Postman
 
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```text
-salon-booking-api/
-├── .postman/
+salon_booking_api/
+│
+├── models/
+│   ├── Booking.js
+│   └── Service.js
 ├── postman/
 ├── screenshots/
-├── models/
-│   ├── Service.js
-│   └── Booking.js
 ├── db.js
-├── .env              (not committed — see setup below)
+├── server.js
+├── .env.example
 ├── .gitignore
 ├── package.json
-├── package-lock.json
 ├── README.md
-└── server.js
 ```
 
----
+## Prerequisites
 
-## 🗄️ Database Setup
+Before running the project, install:
 
-This API uses **PostgreSQL** with **Sequelize** as the ORM. Data is stored in two related tables:
+- Node.js
+- npm
+- PostgreSQL
 
-- **Services** — `id`, `name` (e.g. "Haircut", "Facial")
-- **Bookings** — `id`, `date`, `time`, `name`, `phone`, `notes`, `serviceId` (foreign key → `Services.id`)
+## Installation
 
-This is a **one-to-many relationship**: one service can have many bookings.
+Clone the repository:
 
-### Prerequisites
+```bash
+git clone https://github.com/ayeshaacheema/salon_booking_api.git
+cd salon_booking_api
+```
 
-- PostgreSQL installed and running locally ([download here](https://www.postgresql.org/download/))
-- A database created for this project
+Install dependencies:
 
-### 1. Create the database
+```bash
+npm install
+```
 
-Open `psql` or pgAdmin and run:
+Create a PostgreSQL database:
 
 ```sql
 CREATE DATABASE salon_booking_db;
 ```
 
-### 2. Configure environment variables
-
-Create a `.env` file in the project root (this file is gitignored and never committed):
+Create a `.env` file in the project root:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=salon_booking_db
 DB_USER=postgres
-DB_PASSWORD=your_password_here
+DB_PASSWORD=your_password
 ```
 
-An `.env.example` file is included in the repo as a template — copy it to `.env` and fill in your own credentials.
+An `.env.example` file is included as a template.
 
-### 3. Tables are created automatically
-
-On server startup, Sequelize syncs the `Services` and `Bookings` tables automatically — no manual migration needed for this project.
-
-### 4. Connection error handling
-
-If the database is unreachable (wrong credentials, Postgres not running, etc.), the server logs a clear error message and exits instead of crashing silently or hanging:
-
-```
-❌ Unable to connect to the database: <error message>
-```
-
----
-
-## 📋 Prerequisites
-
-Before running the project, ensure you have the following installed:
-
-- Node.js
-- npm (comes with Node.js)
-- PostgreSQL
-
----
-
-## ⚙️ Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-```
-
-### 2. Navigate to the project directory
-
-```bash
-cd salon_booking_api
-```
-
-### 3. Install dependencies
-
-```bash
-npm install
-```
-
-### 4. Set up the database
-
-Follow the [Database Setup](#️-database-setup) section above before starting the server.
-
-### 5. Start the server
+Start the server:
 
 ```bash
 npm start
 ```
 
-or, if using Nodemon:
+or
 
 ```bash
 npm run dev
 ```
 
-The server will run at:
+The server runs on:
 
 ```text
 http://localhost:3000
 ```
 
-You should see:
-```
-✅ Database connected
-Server is running on port 3000
-```
+When the application starts, Sequelize automatically creates the required tables if they do not already exist.
 
----
+## Database
 
-## 📌 API Endpoints
+The application uses two related tables.
 
-| Method | Endpoint        | Description                |
-| ------ | --------------- | -------------------------- |
-| GET    | `/bookings`     | Retrieve all bookings      |
-| GET    | `/bookings/:id` | Retrieve a booking by ID   |
-| POST   | `/bookings`     | Create a new booking       |
-| PUT    | `/bookings/:id` | Update an existing booking |
-| DELETE | `/bookings/:id` | Delete a booking           |
+### Services
 
----
+| Field | Type |
+|------|------|
+| id | Integer |
+| name | String |
 
-## 📝 Sample Request
+### Bookings
 
-### POST `/bookings`
+| Field | Type |
+|------|------|
+| id | Integer |
+| date | Date |
+| time | String |
+| name | String |
+| phone | String |
+| notes | String |
+| serviceId | Foreign Key |
+
+Each booking belongs to one service, and each service can have multiple bookings.
+
+If the database connection fails, the application logs the error and exits instead of continuing to run.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/bookings` | Get all bookings |
+| GET | `/bookings/:id` | Get a booking by ID |
+| POST | `/bookings` | Create a booking |
+| PUT | `/bookings/:id` | Update a booking |
+| DELETE | `/bookings/:id` | Delete a booking |
+
+## Example Request
+
+**POST** `/bookings`
 
 ```json
 {
@@ -186,11 +150,11 @@ Server is running on port 3000
   "time": "3:00 PM",
   "name": "Ayesha Cheema",
   "phone": "03001234567",
-  "notes": "First time client"
+  "notes": "First-time client"
 }
 ```
 
-Response (`201 Created`):
+Example response:
 
 ```json
 {
@@ -202,53 +166,39 @@ Response (`201 Created`):
     "time": "3:00 PM",
     "name": "Ayesha Cheema",
     "phone": "03001234567",
-    "notes": "First time client"
+    "notes": "First-time client"
   }
 }
 ```
 
----
+## Testing
 
-## ✅ API Testing
+The API was tested manually using Postman.
 
-The API has been thoroughly tested using **Postman** to verify both functionality and error handling, including database persistence across server restarts.
+The following scenarios were verified:
 
-### Test Coverage
+- Retrieve all bookings
+- Retrieve a booking by ID
+- Create a booking
+- Update a booking
+- Delete a booking
+- Missing required fields
+- Invalid booking IDs
+- Error responses
+- Database persistence after server restart
 
-- ✅ Retrieve all bookings
-- ✅ Retrieve a booking by ID
-- ✅ Create a new booking
-- ✅ Update an existing booking
-- ✅ Delete a booking
-- ✅ Missing required fields validation
-- ✅ Invalid booking ID validation
-- ✅ Invalid request handling
-- ✅ Successful CRUD operations
-- ✅ Data persists correctly after server restart
-
-### Included in this Repository
+The repository includes:
 
 - `postman/` – Postman collection
-- `.postman/` – Postman workspace files
-- `screenshots/` – Screenshots demonstrating API testing
+- `screenshots/` – API testing screenshots
 
----
+## Screenshots
 
-## 📸 Screenshots
+Screenshots included in the repository demonstrate:
 
-The `screenshots/` folder contains screenshots of:
-
-- GET all bookings
-- GET booking by ID
-- POST booking
-- PUT booking
-- DELETE booking
-- Validation and error responses
-
----
-
-## 👩‍💻 Author
-
-**Ayesha Cheema**
-
-GitHub: **https://github.com/ayeshaacheema**
+- Get all bookings
+- Get booking by ID
+- Create booking
+- Update booking
+- Delete booking
+- Validation and error handling

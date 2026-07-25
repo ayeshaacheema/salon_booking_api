@@ -248,26 +248,6 @@ The following scenarios were verified:
 
 The Postman collection is available in the `postman` folder.
 
-## Screenshots
-
-You can include screenshots of API testing in the `screenshots` folder.
-
-Example:
-
-```markdown
-### User Login
-
-![Login](screenshots/login.png)
-
-### Get All Bookings
-
-![Bookings](screenshots/get-bookings.png)
-
-### Create Booking
-
-![Create Booking](screenshots/create-booking.png)
-```
-
 ## Author
 
 **Ayesha Cheema**

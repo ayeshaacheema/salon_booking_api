@@ -245,3 +245,5 @@ The `screenshots` folder contains example requests and responses for:
 - Update booking
 - Delete booking
 - Error responses
+- Blocked access without token
+- Blocked access with invalid token

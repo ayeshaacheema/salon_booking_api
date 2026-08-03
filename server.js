@@ -1,4 +1,15 @@
 const express = require("express");
+const AppError = require("./utils/AppError");
+const errorHandler = require("./middleware/errorHandler");
+const { sendSuccess } = require("./utils/response");
+const catchAsync = require("./utils/catchAsync");
+const validate = require("./middleware/validate");
+const { bookingSchema } = require("./validators/bookingValidator");
+const {
+    signupSchema,
+    loginSchema
+} = require("./validators/userValidator");
+
 const { sequelize, connectDB } = require("./db");
 const Service = require("./models/Service");
 const Booking = require("./models/Booking");
@@ -23,13 +34,21 @@ app.use((req, res, next) => {
 
 // Home Route
 app.get("/", (req, res) => {
-    res.status(200).json({ message: "Salon Booking API is running!" });
+    sendSuccess(res, 200, {
+        message: "Salon Booking API is running!"
+    });
 });
 
 // GET All Bookings
-app.get("/bookings", async (req, res) => {
-    try {
-        const bookings = await Booking.findAll({ include: Service });
+app.get(
+    "/bookings",
+
+    catchAsync(async (req, res) => {
+
+        const bookings = await Booking.findAll({
+            include: Service
+        });
+
         const formatted = bookings.map(b => ({
             id: b.id,
             service: b.Service.name,
@@ -39,23 +58,26 @@ app.get("/bookings", async (req, res) => {
             phone: b.phone,
             notes: b.notes
         }));
-        res.status(200).json(formatted);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to fetch bookings" });
-    }
-});
 
+        sendSuccess(res, 200, formatted);
+
+    })
+);
 // GET Single Booking
-app.get("/bookings/:id", async (req, res) => {
-    try {
-        const booking = await Booking.findByPk(req.params.id, { include: Service });
+app.get(
+    "/bookings/:id",
+
+    catchAsync(async (req, res) => {
+
+        const booking = await Booking.findByPk(req.params.id, {
+            include: Service
+        });
 
         if (!booking) {
-            return res.status(404).json({ message: "Booking not found" });
+            throw new AppError("Booking not found", 404);
         }
 
-        res.status(200).json({
+        sendSuccess(res, 200, {
             id: booking.id,
             service: booking.Service.name,
             date: booking.date,
@@ -64,24 +86,21 @@ app.get("/bookings/:id", async (req, res) => {
             phone: booking.phone,
             notes: booking.notes
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to fetch booking" });
-    }
-});
 
+    })
+);
 // CREATE Booking
-app.post("/bookings", authenticateToken, async (req, res) => {
-    try {
+app.post(
+    "/bookings",
+    authenticateToken,
+    validate(bookingSchema),
+    catchAsync(async (req, res) => {
+
         const { service, date, time, name, phone, notes } = req.body;
 
-        if (!service || !date || !time || !name || !phone) {
-            return res.status(400).json({
-                message: "Service, date, time, name and phone are required."
-            });
-        }
-
-        const [serviceRecord] = await Service.findOrCreate({ where: { name: service } });
+        const [serviceRecord] = await Service.findOrCreate({
+            where: { name: service }
+        });
 
         const booking = await Booking.create({
             serviceId: serviceRecord.id,
@@ -92,7 +111,7 @@ app.post("/bookings", authenticateToken, async (req, res) => {
             notes
         });
 
-        res.status(201).json({
+        sendSuccess(res, 201, {
             message: "Booking created successfully!",
             booking: {
                 id: booking.id,
@@ -104,30 +123,26 @@ app.post("/bookings", authenticateToken, async (req, res) => {
                 notes: booking.notes
             }
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to create booking" });
-    }
-});
 
+    })
+);
 // UPDATE Booking
-app.put("/bookings/:id", async (req, res) => {
-    try {
+app.put(
+    "/bookings/:id",
+    validate(bookingSchema),
+    catchAsync(async (req, res) => {
+
         const booking = await Booking.findByPk(req.params.id);
 
         if (!booking) {
-            return res.status(404).json({ message: "Booking not found" });
+            throw new AppError("Booking not found", 404);
         }
 
         const { service, date, time, name, phone, notes } = req.body;
 
-        if (!service || !date || !time || !name || !phone) {
-            return res.status(400).json({
-                message: "Service, date, time, name and phone are required."
-            });
-        }
-
-        const [serviceRecord] = await Service.findOrCreate({ where: { name: service } });
+        const [serviceRecord] = await Service.findOrCreate({
+            where: { name: service }
+        });
 
         booking.serviceId = serviceRecord.id;
         booking.date = date;
@@ -135,9 +150,10 @@ app.put("/bookings/:id", async (req, res) => {
         booking.name = name;
         booking.phone = phone;
         booking.notes = notes;
+
         await booking.save();
 
-        res.status(200).json({
+        sendSuccess(res, 200, {
             message: "Booking updated successfully!",
             booking: {
                 id: booking.id,
@@ -149,91 +165,113 @@ app.put("/bookings/:id", async (req, res) => {
                 notes: booking.notes
             }
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to update booking" });
-    }
-});
 
+    })
+);
 // DELETE Booking
-app.delete("/bookings/:id", authenticateToken, async (req, res) => {
-    try {
+app.delete(
+    "/bookings/:id",
+    authenticateToken,
+    catchAsync(async (req, res) => {
+
         const booking = await Booking.findByPk(req.params.id);
 
         if (!booking) {
-            return res.status(404).json({ message: "Booking not found" });
+            throw new AppError("Booking not found", 404);
         }
 
         await booking.destroy();
 
-        res.status(200).json({ message: "Booking deleted successfully!" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Failed to delete booking" });
-    }
-});
+        sendSuccess(res, 200, {
+            message: "Booking deleted successfully!"
+        });
+
+    })
+);
 // SIGNUP
-app.post("/auth/signup", async (req, res) => {
-    try {
+// SIGNUP
+app.post(
+    "/auth/signup",
+    validate(signupSchema),
+    catchAsync(async (req, res) => {
+
         const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required." });
-        }
-
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne({
+            where: { email }
+        });
 
         if (existingUser) {
-            return res.status(400).json({ message: "Email already in use." });
+            throw new AppError("Email already in use.", 400);
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await User.create({ email, password: hashedPassword });
-
-        res.status(201).json({
-            message: "User created successfully!",
-            user: { id: user.id, email: user.email }
+        const user = await User.create({
+            email,
+            password: hashedPassword
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Signup failed." });
-    }
-});
 
+        sendSuccess(res, 201, {
+            message: "User created successfully!",
+            user: {
+                id: user.id,
+                email: user.email
+            }
+        });
+
+    })
+);
 // LOGIN
-app.post("/auth/login", async (req, res) => {
-    try {
+// LOGIN
+app.post(
+    "/auth/login",
+    validate(loginSchema),
+    catchAsync(async (req, res) => {
+
         const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required." });
-        }
-
-        const user = await User.findOne({ where: { email } });
+        const user = await User.findOne({
+            where: { email }
+        });
 
         if (!user) {
-            return res.status(401).json({ message: "Invalid email or password." });
+            throw new AppError("Invalid email or password.", 401);
         }
 
-        const passwordMatches = await bcrypt.compare(password, user.password);
+        const passwordMatches = await bcrypt.compare(
+            password,
+            user.password
+        );
 
         if (!passwordMatches) {
-            return res.status(401).json({ message: "Invalid email or password." });
+            throw new AppError("Invalid email or password.", 401);
         }
 
         const token = jwt.sign(
-            { userId: user.id, email: user.email },
+            {
+                userId: user.id,
+                email: user.email
+            },
             process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
+            {
+                expiresIn: process.env.JWT_EXPIRES_IN
+            }
         );
 
-        res.status(200).json({ message: "Login successful!", token });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Login failed." });
-    }
+        sendSuccess(res, 200, {
+            message: "Login successful!",
+            token
+        });
+
+    })
+);
+app.all("/{*any}", (req, res, next) => {
+    next(new AppError(`Route ${req.originalUrl} not found`, 404));
 });
+
+app.use(errorHandler);
+
 
 // Start Server
 connectDB().then(async () => {

@@ -5,18 +5,22 @@ const { sendSuccess } = require("./utils/response");
 const catchAsync = require("./utils/catchAsync");
 const validate = require("./middleware/validate");
 const { bookingSchema } = require("./validators/bookingValidator");
+const { reviewSchema } = require("./validators/reviewValidator");
+const { Op } = require("sequelize");
 const {
     signupSchema,
     loginSchema
 } = require("./validators/userValidator");
 
 const { sequelize, connectDB } = require("./db");
+const Review = require("./models/Review");
 const Service = require("./models/Service");
 const Booking = require("./models/Booking");
 const User = require("./models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const authenticateToken = require("./middleware/auth");
+
 const app = express();
 app.use(express.json());
 
@@ -25,10 +29,12 @@ const PORT = 3000;
 // Request Logging Middleware
 app.use((req, res, next) => {
     const start = Date.now();
+
     res.on("finish", () => {
         const duration = Date.now() - start;
         console.log(`${req.method} ${req.originalUrl} - ${duration}ms`);
     });
+
     next();
 });
 
@@ -39,17 +45,56 @@ app.get("/", (req, res) => {
     });
 });
 
-// GET All Bookings
+// GET All Bookings (supports filtering, sorting, and pagination)
 app.get(
     "/bookings",
-
     catchAsync(async (req, res) => {
 
-        const bookings = await Booking.findAll({
-            include: Service
+        // Read query parameters
+        const { service, sortBy, order, page, limit } = req.query;
+
+        // Default sorting
+        const sortField = sortBy || "id";
+        const sortOrder = order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+        // Default pagination
+        const pageNumber = parseInt(page) || 1;
+        const pageSize = parseInt(limit) || 10;
+        const offset = (pageNumber - 1) * pageSize;
+
+        // TEMP DEBUG - remove once confirmed working
+        console.log({
+            service,
+            sortField,
+            sortOrder,
+            pageNumber,
+            pageSize,
+            offset
         });
 
-        const formatted = bookings.map(b => ({
+        // Get bookings (with count for pagination metadata)
+        const { rows: bookings, count: totalItems } = await Booking.findAndCountAll({
+            include: [
+                {
+                    model: Service,
+                    where: service
+                        ? {
+                              name: {
+                                  [Op.iLike]: service
+                              }
+                          }
+                        : undefined
+                }
+            ],
+            order: [
+                [sortField, sortOrder]
+            ],
+            limit: pageSize,
+            offset: offset
+        });
+
+        // Format response
+        const formatted = bookings.map((b) => ({
             id: b.id,
             service: b.Service.name,
             date: b.date,
@@ -59,43 +104,25 @@ app.get(
             notes: b.notes
         }));
 
-        sendSuccess(res, 200, formatted);
-
-    })
-);
-// GET Single Booking
-app.get(
-    "/bookings/:id",
-
-    catchAsync(async (req, res) => {
-
-        const booking = await Booking.findByPk(req.params.id, {
-            include: Service
-        });
-
-        if (!booking) {
-            throw new AppError("Booking not found", 404);
-        }
-
         sendSuccess(res, 200, {
-            id: booking.id,
-            service: booking.Service.name,
-            date: booking.date,
-            time: booking.time,
-            name: booking.name,
-            phone: booking.phone,
-            notes: booking.notes
+            data: formatted,
+            pagination: {
+                page: pageNumber,
+                limit: pageSize,
+                totalItems,
+                totalPages: Math.ceil(totalItems / pageSize)
+            }
         });
 
     })
 );
+
 // CREATE Booking
 app.post(
     "/bookings",
     authenticateToken,
     validate(bookingSchema),
     catchAsync(async (req, res) => {
-
         const { service, date, time, name, phone, notes } = req.body;
 
         const [serviceRecord] = await Service.findOrCreate({
@@ -123,15 +150,15 @@ app.post(
                 notes: booking.notes
             }
         });
-
     })
 );
+
 // UPDATE Booking
 app.put(
     "/bookings/:id",
+    authenticateToken,
     validate(bookingSchema),
     catchAsync(async (req, res) => {
-
         const booking = await Booking.findByPk(req.params.id);
 
         if (!booking) {
@@ -165,15 +192,14 @@ app.put(
                 notes: booking.notes
             }
         });
-
     })
 );
+
 // DELETE Booking
 app.delete(
     "/bookings/:id",
     authenticateToken,
     catchAsync(async (req, res) => {
-
         const booking = await Booking.findByPk(req.params.id);
 
         if (!booking) {
@@ -185,16 +211,70 @@ app.delete(
         sendSuccess(res, 200, {
             message: "Booking deleted successfully!"
         });
+    })
+);
+
+// CREATE Review
+app.post(
+    "/services/:id/reviews",
+    validate(reviewSchema),
+    catchAsync(async (req, res) => {
+        // Get the service ID from the URL
+        const serviceId = req.params.id;
+
+        // Check if the service exists
+        const service = await Service.findByPk(serviceId);
+
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+
+        // Get review details from the request body
+        const { rating, comment } = req.body;
+
+        // Create the review
+        const review = await Review.create({
+            serviceId,
+            rating,
+            comment
+        });
+
+        // Send success response
+        sendSuccess(res, 201, {
+            message: "Review created successfully!",
+            review
+        });
+    })
+);
+
+// GET Reviews for a Service
+app.get(
+    "/services/:id/reviews",
+    catchAsync(async (req, res) => {
+
+        const serviceId = req.params.id;
+
+        const service = await Service.findByPk(serviceId);
+
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+
+        const reviews = await Review.findAll({
+            where: { serviceId }
+        });
+
+        sendSuccess(res, 200, reviews);
 
     })
 );
-// SIGNUP
+
+
 // SIGNUP
 app.post(
     "/auth/signup",
     validate(signupSchema),
     catchAsync(async (req, res) => {
-
         const { email, password } = req.body;
 
         const existingUser = await User.findOne({
@@ -219,16 +299,14 @@ app.post(
                 email: user.email
             }
         });
-
     })
 );
-// LOGIN
+
 // LOGIN
 app.post(
     "/auth/login",
     validate(loginSchema),
     catchAsync(async (req, res) => {
-
         const { email, password } = req.body;
 
         const user = await User.findOne({
@@ -263,19 +341,19 @@ app.post(
             message: "Login successful!",
             token
         });
-
     })
 );
+
 app.all("/{*any}", (req, res, next) => {
     next(new AppError(`Route ${req.originalUrl} not found`, 404));
 });
 
 app.use(errorHandler);
 
-
 // Start Server
 connectDB().then(async () => {
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
+
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
     });

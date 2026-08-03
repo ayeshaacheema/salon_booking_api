@@ -1,8 +1,15 @@
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../db');
+const { DataTypes } = require("sequelize");
+const { sequelize } = require("../db");
 
-const Service = sequelize.define('Service', {
-  name: { type: DataTypes.STRING, allowNull: false, unique: true },
+const Service = sequelize.define("Service", {
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    }
 });
 
 module.exports = Service;

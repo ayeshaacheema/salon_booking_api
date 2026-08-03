@@ -155,14 +155,38 @@ Tested scenarios include:
 * handling invalid service IDs
 * retrieving reviews for specific services
 
-Screenshots of testing results are available in the `screenshots/` folder:
+## Screenshots
 
-* `![Filter bookings by service](screenshots/filter-bookings-by-service.png)`
-* `sort-bookings-ascending`
-* `sort-bookings-descending`
-* `pagination-page`
-* `pagination-page-2`
-* `filtering-and-pagination`
+Screenshots of testing results:
+
+### Filtering Bookings by Service
+
+[![Filter bookings by service](screenshots/filter-bookings-by-service.png)](screenshots/filter-bookings-by-service.png)
+
+
+### Sorting Bookings Ascending
+
+[![Sort bookings ascending](screenshots/sort-bookings-ascending.png)](screenshots/sort-bookings-ascending.png)
+
+
+### Sorting Bookings Descending
+
+[![Sort bookings descending](screenshots/sort-bookings-descending.png)](screenshots/sort-bookings-descending.png)
+
+
+### Pagination - Page 1
+
+[![Pagination page](screenshots/pagination-page.png)](screenshots/pagination-page.png)
+
+
+### Pagination - Page 2
+
+[![Pagination page 2](screenshots/pagination-page-2.png)](screenshots/pagination-page-2.png)
+
+
+### Filtering and Pagination Together
+
+[![Filtering and pagination](screenshots/filtering-and-pagination.png)](screenshots/filtering-and-pagination.png)
 
 ## Author
 

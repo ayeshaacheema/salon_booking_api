@@ -157,7 +157,7 @@ Tested scenarios include:
 
 Screenshots of testing results are available in the `screenshots/` folder:
 
-* `filter-bookings-by-service`
+* `![Filter bookings by service](screenshots/filter-bookings-by-service.png)`
 * `sort-bookings-ascending`
 * `sort-bookings-descending`
 * `pagination-page`

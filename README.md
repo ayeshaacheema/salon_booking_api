@@ -1,157 +1,93 @@
-# Salon Booking API
+# Task 6 - Relationships, Filtering, Sorting, Pagination
 
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+This task builds on the JWT auth version of the API. The bookings and services tables were already linked, but this is where that relationship actually gets used - querying bookings by service, sorting and paginating results, and adding a Reviews table tied to services.
 
-## Tech Stack
+## What changed
 
-- Node.js / Express
-- PostgreSQL + Sequelize
-- bcrypt for password hashing
-- jsonwebtoken for auth
-- Postman for testing
+**Service now has two things attached to it:** bookings (already existed) and reviews (new). A service can have many bookings and many reviews, both through a `serviceId` foreign key.
 
-## Project Structure
+**GET /bookings got a lot more useful.** Before, it just returned every booking with no way to narrow it down. Now it supports:
 
-```
-salon-booking-api/
-├── models/
-│   ├── Service.js
-│   ├── Booking.js
-│   └── User.js
-├── middleware/
-│   └── auth.js
-├── db.js
-├── server.js
-├── .env
-├── .env.example
-├── postman/
-├── screenshots/
-└── README.md
-```
+- filtering by service name
+- sorting by any column, ascending or descending
+- pagination with page/limit
 
-## Setup
+**Reviews are new.** Each service can be reviewed - a rating from 1 to 5 and a comment. Two endpoints: one to leave a review, one to see all reviews for a service.
 
-1. Clone the repo
-```
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-cd salon_booking_api
-```
-
-2. Install dependencies
-```
-npm install
-```
-
-3. Set up PostgreSQL - create a database:
-```sql
-CREATE DATABASE salon_booking_db;
-```
-
-4. Create a `.env` file in the root (there's an `.env.example` you can copy from):
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=salon_booking_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_random_secret
-JWT_EXPIRES_IN=1h
-```
-
-You can generate a random secret with:
-```
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-5. Run it
-```
-node server.js
-```
-
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
-
-## Database
-
-Two related tables:
-- `Services` - id, name
-- `Bookings` - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
-
-A booking belongs to a service, a service can have many bookings.
-
-## Endpoints
-
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| POST | /auth/signup | create a new user | no |
-| POST | /auth/login | log in, get back a token | no |
-| GET | /bookings | list all bookings | no |
-| GET | /bookings/:id | get one booking | no |
-| POST | /bookings | create a booking | yes |
-| PUT | /bookings/:id | update a booking | no |
-| DELETE | /bookings/:id | delete a booking | yes |
-
-### Sample: create a booking
+## Bookings - filtering, sorting, pagination
 
 ```
-POST /bookings
+GET /bookings
+GET /bookings?service=Haircut
+GET /bookings?sortBy=date&order=desc
+GET /bookings?page=2&limit=5
+GET /bookings?service=Haircut&sortBy=date&order=desc&page=1&limit=5
 ```
+
+| Param | What it does | Default |
+|---|---|---|
+| service | matches the service name, case-insensitive | none - returns all |
+| sortBy | column to sort by (id, date, etc.) | id |
+| order | asc or desc | asc |
+| page | which page of results | 1 |
+| limit | results per page | 10 |
+
+Response includes a pagination block along with the data:
+
 ```json
 {
-  "service": "Haircut",
-  "date": "2026-07-28",
-  "time": "3:00 PM",
-  "name": "Ayesha Cheema",
-  "phone": "03001234567",
-  "notes": "First time client"
+  "success": true,
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "totalItems": 23,
+    "totalPages": 3
+  }
 }
 ```
 
-## Auth
+The service filter uses `ILIKE` under the hood so "haircut" and "Haircut" both match - didn't want people to get zero results just because of casing.
 
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
+## Reviews
 
-**Signup**
 ```
-POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
+POST /services/:id/reviews
 ```
-
-**Login** - returns a JWT
-```
-POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
-```
-response:
 ```json
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
+{
+  "rating": 5,
+  "comment": "loved it, will book again"
+}
 ```
 
-To hit a protected route, add this header:
+Rating has to be a whole number between 1 and 5, comment can't be empty. If the service ID in the URL doesn't exist, you get a 404 instead of a review attached to nothing.
+
 ```
-Authorization: Bearer <token>
+GET /services/:id/reviews
 ```
+Returns all reviews for that service, same 404 if the service isn't real.
 
-`POST /bookings` and `DELETE /bookings/:id` require this. The rest don't.
+Neither of these needs a token right now - reviews aren't behind auth yet.
 
-Token expires based on `JWT_EXPIRES_IN` in `.env` (currently 1h).
+## Endpoints added this task
 
-### Error responses
+| Method | Route | Description | Needs token? |
+|---|---|---|---|
+| GET | /bookings | now supports service filter, sortBy, order, page, limit | no |
+| POST | /services/:id/reviews | leave a review for a service | no |
+| GET | /services/:id/reviews | list reviews for a service | no |
 
-| Case | Status | Message |
-|---|---|---|
-| wrong email/password | 401 | Invalid email or password. |
-| no token sent | 401 | No token provided. |
-| token expired | 401 | Token has expired. Please log in again. |
-| bad/tampered token | 403 | Invalid token. |
-| email already taken | 400 | Email already in use. |
+## A couple of notes on how this was built
 
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
+- Pagination math is just `offset = (page - 1) * limit`, nothing fancy.
+- `totalPages` comes from `Math.ceil(totalItems / limit)` so the last page isn't cut off if it doesn't divide evenly.
+- Sorting takes whatever column name is passed in `sortBy` - fine for now since this is a learning project, but in a real app you'd want to whitelist the allowed columns instead of passing the query param straight to Sequelize.
+- Service lookup for the booking filter uses `findAndCountAll` with an `include`, so the count returned is already correct for the filtered set, not the whole table.
 
 ## Testing
 
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in `postman/`, some screenshots in `screenshots/`.
-
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
+Tested manually in Postman - filtering by service, sorting both directions, pagination across a few pages, and the review endpoints with valid and invalid service IDs. Screenshots for these are in the `screenshots/` folder (filter-bookings-by-service, sort-bookings-ascending, sort-bookings-descending, pagination-page, pagination-page-2, filtering-and-pagination).
 
 ## Author
 

@@ -1,159 +1,210 @@
-# Salon Booking API
+# Week 3 – Input Validation & Error Handling
 
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+This update improves the API by validating incoming requests, handling errors in one place, and returning consistent responses across all endpoints.
 
-## Tech Stack
+## Features Added
 
-- Node.js / Express
-- PostgreSQL + Sequelize
-- bcrypt for password hashing
-- jsonwebtoken for auth
-- Postman for testing
+- Input validation using **Zod**
+- Centralized error handling
+- Consistent API response format
+- Validation for signup, login, create booking, and update booking
+- Handling of malformed JSON requests
+- Proper error messages for invalid requests
 
-## Project Structure
+---
 
-```
-salon-booking-api/
-├── models/
-│   ├── Service.js
-│   ├── Booking.js
-│   └── User.js
-├── middleware/
-│   └── auth.js
-├── db.js
-├── server.js
-├── .env
-├── .env.example
-├── postman/
-├── screenshots/
-└── README.md
+## Response Format
+
+### Successful Request
+
+```json
+{
+  "success": true,
+  "data": {
+    ...
+  },
+  "error": null
+}
 ```
 
-## Setup
+### Failed Request
 
-1. Clone the repo
-```
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-cd salon_booking_api
-```
-
-2. Install dependencies
-```
-npm install
-```
-
-3. Set up PostgreSQL - create a database:
-```sql
-CREATE DATABASE salon_booking_db;
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "Description of the error"
+  }
+}
 ```
 
-4. Create a `.env` file in the root (there's an `.env.example` you can copy from):
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=salon_booking_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_random_secret
-JWT_EXPIRES_IN=1h
-```
+---
 
-You can generate a random secret with:
-```
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+# Error Handling Examples
 
-5. Run it
-```
-node server.js
-```
+## 1. Empty Request Body
 
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
-
-## Database
-
-Two related tables:
-- `Services` - id, name
-- `Bookings` - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
-
-A booking belongs to a service, a service can have many bookings.
-
-## Endpoints
-
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| POST | /auth/signup | create a new user | no |
-| POST | /auth/login | log in, get back a token | no |
-| GET | /bookings | list all bookings | no |
-| GET | /bookings/:id | get one booking | no |
-| POST | /bookings | create a booking | yes |
-| PUT | /bookings/:id | update a booking | no |
-| DELETE | /bookings/:id | delete a booking | yes |
-
-### Sample: create a booking
+**Request**
 
 ```
 POST /bookings
 ```
+
+```json
+{}
+```
+
+**Response**
+
+**Status:** `400 Bad Request`
+
 ```json
 {
-  "service": "Haircut",
-  "date": "2026-07-28",
-  "time": "3:00 PM",
-  "name": "Ayesha Cheema",
-  "phone": "03001234567",
-  "notes": "First time client"
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "service: Invalid input: expected string, received undefined, date: Invalid input: expected string, received undefined, time: Invalid input: expected string, received undefined, name: Invalid input: expected string, received undefined, phone: Invalid input: expected string, received undefined"
+  }
 }
 ```
 
-## Auth
+---
 
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
+## 2. Invalid Phone Number
 
-**Signup**
+**Request**
+
+```
+POST /bookings
+```
+
+```json
+{
+  "service": "Hair Cut",
+  "date": "2026-08-15",
+  "time": "14:00",
+  "name": "Ayesha",
+  "phone": "123"
+}
+```
+
+**Response**
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "phone: Phone number must contain exactly 11 digits"
+  }
+}
+```
+
+---
+
+## 3. Duplicate Email
+
+**Request**
+
 ```
 POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
 ```
 
-**Login** - returns a JWT
+```json
+{
+  "email": "ayesha@test.com",
+  "password": "mypassword123"
+}
+```
+
+(Email already exists.)
+
+**Response**
+
+**Status:** `400 Bad Request`
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "Email already in use."
+  }
+}
+```
+
+---
+
+## 4. Invalid Login
+
+**Request**
+
 ```
 POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
 ```
-response:
+
 ```json
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
+{
+  "email": "ayesha@test.com",
+  "password": "wrongpassword"
+}
 ```
 
-To hit a protected route, add this header:
+**Response**
+
+**Status:** `401 Unauthorized`
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "Invalid email or password."
+  }
+}
 ```
-Authorization: Bearer <token>
+
+---
+
+## 5. Malformed JSON
+
+**Request**
+
+```
+POST /bookings
 ```
 
-`POST /bookings` and `DELETE /bookings/:id` require this. The rest don't.
+```json
+{
+  "service": "Hair Cut",
+  "date": "2026-08-15",
+```
 
-Token expires based on `JWT_EXPIRES_IN` in `.env` (currently 1h).
+**Response**
 
-### Error responses
+**Status:** `400 Bad Request`
 
-| Case | Status | Message |
-|---|---|---|
-| wrong email/password | 401 | Invalid email or password. |
-| no token sent | 401 | No token provided. |
-| token expired | 401 | Token has expired. Please log in again. |
-| bad/tampered token | 403 | Invalid token. |
-| email already taken | 400 | Email already in use. |
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "message": "Malformed JSON in request body"
+  }
+}
+```
 
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
+---
 
-## Testing
+## Technologies Used
 
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in `postman/`, some screenshots in `screenshots/`.
-
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
-
-## Author
-
-Ayesha Cheema
-github.com/ayeshaacheema
+- Node.js
+- Express.js
+- PostgreSQL
+- Sequelize
+- JWT Authentication
+- bcrypt
+- Zod

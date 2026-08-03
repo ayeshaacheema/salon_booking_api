@@ -1,20 +1,29 @@
 # Task 6 - Relationships, Filtering, Sorting, Pagination
 
-This task builds on the JWT auth version of the API. The bookings and services tables were already linked, but this is where that relationship actually gets used - querying bookings by service, sorting and paginating results, and adding a Reviews table tied to services.
+This task focuses on working with real-world relational data instead of treating everything as a single flat list. The existing relationship between bookings and services is now used for filtering, sorting, and pagination, while a new Reviews resource was added to demonstrate a one-to-many relationship with services.
 
 ## What changed
 
-**Service now has two things attached to it:** bookings (already existed) and reviews (new). A service can have many bookings and many reviews, both through a `serviceId` foreign key.
+### Service Relationships
 
-**GET /bookings got a lot more useful.** Before, it just returned every booking with no way to narrow it down. Now it supports:
+The `Service` model now has two related resources:
 
-- filtering by service name
-- sorting by any column, ascending or descending
-- pagination with page/limit
+* **Bookings** (existing relationship)
+* **Reviews** (new relationship)
 
-**Reviews are new.** Each service can be reviewed - a rating from 1 to 5 and a comment. Two endpoints: one to leave a review, one to see all reviews for a service.
+A service can have multiple bookings and multiple reviews. Both relationships are handled through the `serviceId` foreign key.
 
-## Bookings - filtering, sorting, pagination
+## Bookings - Filtering, Sorting, and Pagination
+
+Previously, `GET /bookings` returned all bookings without any way to search or control the results.
+
+Now it supports:
+
+* filtering bookings by service name
+* sorting results by different columns
+* pagination using page and limit
+
+### Available Queries
 
 ```
 GET /bookings
@@ -24,20 +33,26 @@ GET /bookings?page=2&limit=5
 GET /bookings?service=Haircut&sortBy=date&order=desc&page=1&limit=5
 ```
 
-| Param | What it does | Default |
-|---|---|---|
-| service | matches the service name, case-insensitive | none - returns all |
-| sortBy | column to sort by (id, date, etc.) | id |
-| order | asc or desc | asc |
-| page | which page of results | 1 |
-| limit | results per page | 10 |
+### Query Parameters
 
-Response includes a pagination block along with the data:
+| Parameter | Description                                         | Default |
+| --------- | --------------------------------------------------- | ------- |
+| service   | Filters bookings by service name (case-insensitive) | none    |
+| sortBy    | Column used for sorting                             | id      |
+| order     | Sorting direction (`asc` or `desc`)                 | asc     |
+| page      | Page number                                         | 1       |
+| limit     | Number of records per page                          | 10      |
+
+The service filtering uses PostgreSQL `ILIKE`, which allows case-insensitive searching. For example, both `haircut` and `Haircut` return the same results.
+
+### Pagination Response
+
+The API now returns pagination information along with booking data:
 
 ```json
 {
   "success": true,
-  "data": [ ... ],
+  "data": [],
   "pagination": {
     "page": 1,
     "limit": 10,
@@ -47,49 +62,110 @@ Response includes a pagination block along with the data:
 }
 ```
 
-The service filter uses `ILIKE` under the hood so "haircut" and "Haircut" both match - didn't want people to get zero results just because of casing.
-
 ## Reviews
+
+A new Reviews resource was added where users can leave feedback for services.
+
+Each review contains:
+
+* rating (between 1 and 5)
+* comment
+
+### Create Review
 
 ```
 POST /services/:id/reviews
 ```
+
+Request body:
+
 ```json
 {
   "rating": 5,
-  "comment": "loved it, will book again"
+  "comment": "Loved it, will book again"
 }
 ```
 
-Rating has to be a whole number between 1 and 5, comment can't be empty. If the service ID in the URL doesn't exist, you get a 404 instead of a review attached to nothing.
+Validation rules:
+
+* rating must be a whole number between 1 and 5
+* comment cannot be empty
+* service ID must exist before creating a review
+
+If the service does not exist, the API returns a `404` response instead of creating an invalid review.
+
+### Get Service Reviews
 
 ```
 GET /services/:id/reviews
 ```
-Returns all reviews for that service, same 404 if the service isn't real.
 
-Neither of these needs a token right now - reviews aren't behind auth yet.
+Returns all reviews belonging to a specific service.
 
-## Endpoints added this task
+The endpoint also returns `404` if the requested service does not exist.
 
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| GET | /bookings | now supports service filter, sortBy, order, page, limit | no |
-| POST | /services/:id/reviews | leave a review for a service | no |
-| GET | /services/:id/reviews | list reviews for a service | no |
+## Endpoints Added in This Task
 
-## A couple of notes on how this was built
+| Method | Route                   | Description                         | Needs Token? |
+| ------ | ----------------------- | ----------------------------------- | ------------ |
+| GET    | `/bookings`             | Filter, sort, and paginate bookings | No           |
+| POST   | `/services/:id/reviews` | Add a review for a service          | No           |
+| GET    | `/services/:id/reviews` | Get all reviews for a service       | No           |
 
-- Pagination math is just `offset = (page - 1) * limit`, nothing fancy.
-- `totalPages` comes from `Math.ceil(totalItems / limit)` so the last page isn't cut off if it doesn't divide evenly.
-- Sorting takes whatever column name is passed in `sortBy` - fine for now since this is a learning project, but in a real app you'd want to whitelist the allowed columns instead of passing the query param straight to Sequelize.
-- Service lookup for the booking filter uses `findAndCountAll` with an `include`, so the count returned is already correct for the filtered set, not the whole table.
+## Implementation Notes
+
+* Pagination uses simple offset-based pagination:
+
+```
+offset = (page - 1) * limit
+```
+
+* `totalPages` is calculated using:
+
+```
+Math.ceil(totalItems / limit)
+```
+
+This ensures the final page is included even when records do not divide evenly.
+
+* Booking filtering uses Sequelize relationships with `include` and `findAndCountAll`, allowing the count to represent only the filtered results.
+
+* Sorting currently accepts the column name provided through `sortBy`. In a production application, allowed sorting columns should be whitelisted to prevent unsafe query inputs.
+
+## Database Seeding
+
+Sample data was added to properly test filtering, sorting, and pagination with a realistic dataset.
+
+The database was populated with more than 30 booking records across different services, allowing testing of:
+
+* service-based filtering
+* ascending and descending sorting
+* pagination across multiple pages
 
 ## Testing
 
-Tested manually in Postman - filtering by service, sorting both directions, pagination across a few pages, and the review endpoints with valid and invalid service IDs. Screenshots for these are in the `screenshots/` folder (filter-bookings-by-service, sort-bookings-ascending, sort-bookings-descending, pagination-page, pagination-page-2, filtering-and-pagination).
+All endpoints were manually tested using Postman.
+
+Tested scenarios include:
+
+* filtering bookings by service name
+* sorting bookings in ascending and descending order
+* pagination across multiple pages
+* creating reviews with valid data
+* handling invalid service IDs
+* retrieving reviews for specific services
+
+Screenshots of testing results are available in the `screenshots/` folder:
+
+* `filter-bookings-by-service`
+* `sort-bookings-ascending`
+* `sort-bookings-descending`
+* `pagination-page`
+* `pagination-page-2`
+* `filtering-and-pagination`
 
 ## Author
 
 Ayesha Cheema
-github.com/ayeshaacheema
+
+GitHub: github.com/ayeshaacheema

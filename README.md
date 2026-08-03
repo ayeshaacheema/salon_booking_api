@@ -1,34 +1,30 @@
-# Week 3 – Input Validation & Error Handling
+# Week 3 - Input Validation & Error Handling
 
-This update improves the API by validating incoming requests, handling errors in one place, and returning consistent responses across all endpoints.
+Up to this point the API would happily accept whatever got sent to it. This update is about not trusting that anymore - validating incoming data, catching failures before they turn into crashes, and making sure every response (success or error) comes back in the same shape.
 
-## Features Added
+## What changed
 
-- Input validation using **Zod**
-- Centralized error handling
-- Consistent API response format
-- Validation for signup, login, create booking, and update booking
-- Handling of malformed JSON requests
-- Proper error messages for invalid requests
+- Request validation using Zod
+- One centralized error handling middleware instead of scattered try/catch blocks
+- A single, consistent response format across every endpoint
+- Validation added to the auth and booking routes
+- Malformed JSON no longer crashes the server, it just returns a proper error
+- Bad IDs, empty bodies, and wrong input formats all get handled instead of ignored
 
----
+## Response format
 
-## Response Format
+Every response looks the same now, whether it worked or not.
 
-### Successful Request
-
+**Success**
 ```json
 {
   "success": true,
-  "data": {
-    ...
-  },
+  "data": { "..." },
   "error": null
 }
 ```
 
-### Failed Request
-
+**Error**
 ```json
 {
   "success": false,
@@ -39,47 +35,45 @@ This update improves the API by validating incoming requests, handling errors in
 }
 ```
 
----
+Doesn't matter which endpoint you hit or what went wrong - the shape is always the same. Makes it a lot easier to handle on the frontend without special-casing every route.
 
-# Error Handling Examples
+## Validation
 
-## 1. Empty Request Body
+Added to any endpoint that takes user input. Covers:
 
-**Request**
+- required fields actually being present
+- correct data types
+- phone number format (11 digits)
+- empty strings
+- password requirements
+- the request body actually having the shape it's supposed to
+
+All of it runs through Zod schemas before the request even reaches the controller logic, so a bad request gets rejected early instead of failing halfway through a database call.
+
+## Examples
+
+### Empty request body
 
 ```
 POST /bookings
-```
-
-```json
 {}
 ```
 
-**Response**
-
-**Status:** `400 Bad Request`
-
+`400 Bad Request`
 ```json
 {
   "success": false,
   "data": null,
   "error": {
-    "message": "service: Invalid input: expected string, received undefined, date: Invalid input: expected string, received undefined, time: Invalid input: expected string, received undefined, name: Invalid input: expected string, received undefined, phone: Invalid input: expected string, received undefined"
+    "message": "Required booking fields are missing"
   }
 }
 ```
 
----
-
-## 2. Invalid Phone Number
-
-**Request**
+### Invalid phone number
 
 ```
 POST /bookings
-```
-
-```json
 {
   "service": "Hair Cut",
   "date": "2026-08-15",
@@ -89,104 +83,71 @@ POST /bookings
 }
 ```
 
-**Response**
-
-**Status:** `400 Bad Request`
-
+`400 Bad Request`
 ```json
 {
   "success": false,
   "data": null,
   "error": {
-    "message": "phone: Phone number must contain exactly 11 digits"
+    "message": "Phone number must contain exactly 11 digits"
   }
 }
 ```
 
----
-
-## 3. Duplicate Email
-
-**Request**
+### Duplicate email on signup
 
 ```
 POST /auth/signup
-```
-
-```json
 {
   "email": "ayesha@test.com",
   "password": "mypassword123"
 }
 ```
+(email already exists)
 
-(Email already exists.)
-
-**Response**
-
-**Status:** `400 Bad Request`
-
+`400 Bad Request`
 ```json
 {
   "success": false,
   "data": null,
   "error": {
-    "message": "Email already in use."
+    "message": "Email already in use"
   }
 }
 ```
 
----
-
-## 4. Invalid Login
-
-**Request**
+### Wrong login credentials
 
 ```
 POST /auth/login
-```
-
-```json
 {
   "email": "ayesha@test.com",
   "password": "wrongpassword"
 }
 ```
 
-**Response**
-
-**Status:** `401 Unauthorized`
-
+`401 Unauthorized`
 ```json
 {
   "success": false,
   "data": null,
   "error": {
-    "message": "Invalid email or password."
+    "message": "Invalid email or password"
   }
 }
 ```
 
----
-
-## 5. Malformed JSON
-
-**Request**
+### Malformed JSON
 
 ```
 POST /bookings
-```
-
-```json
 {
   "service": "Hair Cut",
   "date": "2026-08-15",
 ```
+(request cuts off, invalid JSON)
 
-**Response**
-
-**Status:** `400 Bad Request`
-
+`400 Bad Request`
 ```json
 {
   "success": false,
@@ -197,14 +158,57 @@ POST /bookings
 }
 ```
 
----
+## Other edge cases covered
 
-## Technologies Used
+- invalid booking or service IDs
+- missing auth tokens
+- invalid or tampered JWTs
+- hitting a route that doesn't exist
+- empty update requests
+- update requests with the wrong fields
 
-- Node.js
-- Express.js
-- PostgreSQL
-- Sequelize
-- JWT Authentication
-- bcrypt
-- Zod
+None of these crash the server anymore - they all come back as a proper error response.
+
+## Testing
+
+All of this was tested manually in Postman. Screenshots below.
+
+### Empty request body validation
+POST `/bookings`
+
+[![Empty booking body validation](screenshots/booking_validation_empty_body.png)](screenshots/booking_validation_empty_body.png)
+
+### Invalid phone number validation
+POST `/bookings`
+
+[![Invalid phone validation](screenshots/booking_validation_invalid_phone.png)](screenshots/booking_validation_invalid_phone.png)
+
+### Update booking with empty body
+PUT `/bookings/:id`
+
+[![Update booking empty body](screenshots/booking_update_empty_body.png)](screenshots/booking_update_empty_body.png)
+
+### Update booking with invalid phone number
+PUT `/bookings/:id`
+
+[![Update booking invalid phone](screenshots/booking_update_invalid_phone.png)](screenshots/booking_update_invalid_phone.png)
+
+### Malformed JSON handling
+POST `/bookings`
+
+[![Malformed JSON error](screenshots/malformed_json.png)](screenshots/malformed_json.png)
+
+### Invalid route handling
+Hitting a route that doesn't exist:
+
+[![Invalid route error](screenshots/invalid_route.png)](screenshots/invalid_route.png)
+
+### Auth error handling
+Request with an invalid token:
+
+[![Invalid token error](screenshots/auth_invalid_token.png)](screenshots/auth_invalid_token.png)
+
+## Author
+
+Ayesha Cheema
+github.com/ayeshaacheema

@@ -11,6 +11,32 @@ const errorHandler = (err, req, res, next) => {
         );
     }
 
+    // Multer errors
+    if (err.name === "MulterError") {
+        if (err.code === "LIMIT_FILE_SIZE") {
+            return sendError(
+                res,
+                400,
+                "File size must not exceed 5 MB."
+            );
+        }
+
+        return sendError(
+            res,
+            400,
+            err.message
+        );
+    }
+
+    // Invalid file type
+    if (err.message === "Only JPG, PNG, and WEBP images are allowed.") {
+        return sendError(
+            res,
+            400,
+            err.message
+        );
+    }
+
     // Sequelize duplicate entry
     if (err.name === "SequelizeUniqueConstraintError") {
         return sendError(

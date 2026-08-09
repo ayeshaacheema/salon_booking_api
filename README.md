@@ -25,11 +25,11 @@ The API now supports two user roles:
 
 New users are assigned the `user` role by default.
 
-The role is stored in the database and included in the JWT after login.
+The user's role is stored in the database and included in the JWT after login.
 
 ## User Roles
 
-The `User` model now contains a role field:
+The `User` model now contains a `role` field:
 
 ```js
 role: {
@@ -37,11 +37,11 @@ role: {
     allowNull: false,
     defaultValue: "user"
 }
-````
+```
 
-This prevents users from having an empty role and automatically assigns new accounts the `user` role.
+The default value is `user`, so newly registered accounts cannot automatically become administrators.
 
-Users cannot assign themselves the `admin` role during signup.
+Users also cannot assign themselves the `admin` role during signup.
 
 ## Authentication
 
@@ -61,7 +61,7 @@ The authentication middleware verifies the token and stores the decoded informat
 
 ## Role Authorization Middleware
 
-A new middleware was added:
+A new authorization middleware was added:
 
 ```text
 middleware/authorize.js
@@ -113,7 +113,7 @@ The API distinguishes between authentication and authorization failures.
 
 ### 401 Unauthorized
 
-Returned when the request does not contain a valid authentication token.
+Returned when a request does not contain a valid authentication token.
 
 Example:
 
@@ -125,7 +125,7 @@ Example:
 
 ### 403 Forbidden
 
-Returned when the user has successfully authenticated but does not have the required role.
+Returned when the user is authenticated but does not have the required role.
 
 Example:
 
@@ -143,7 +143,7 @@ Example:
 
 Three role and permission scenarios were tested.
 
-### Test 1 — Admin User
+### 1. Admin User — Access Allowed
 
 An authenticated admin user attempted to delete a booking.
 
@@ -155,7 +155,7 @@ Result:
 
 The booking was successfully deleted.
 
-### Test 2 — Normal User
+### 2. Normal User — Access Forbidden
 
 An authenticated normal user attempted to delete a booking.
 
@@ -167,7 +167,7 @@ Result:
 
 The booking was not deleted.
 
-### Test 3 — No Authentication
+### 3. No Authentication — Unauthorized
 
 A request was sent without a JWT token.
 
@@ -183,42 +183,40 @@ The request was rejected because no authentication token was provided.
 
 Two accounts were used to test the role restrictions:
 
-| Email                                           | Role  |
-| ----------------------------------------------- | ----- |
-| [ayesha@test.com](mailto:ayesha@test.com)       | admin |
-| [testuser@gmail.com](mailto:testuser@gmail.com) | user  |
+| Email | Role |
+| ----- | ---- |
+| ayesha@test.com | admin |
+| testuser@gmail.com | user |
 
-The admin role was assigned directly in the database for testing. Public signup does not allow users to choose their own role.
+The admin role was assigned directly in the database for testing.
+
+Public signup does not allow users to choose their own role.
 
 ## Screenshots
 
-### 1. Admin - Access Allowed
-
-![Admin allowed](task-8-screenshots/admin-allowed.png)
+### 1. Admin — Access Allowed
 
 The admin user was able to delete the booking successfully and received a `200 OK` response.
 
-### 2. Normal User - Access Forbidden
+![Admin access allowed](screenshots/admin-allowed.png)
 
-![Normal user forbidden](task-8-screenshots/user-forbidden.png)
+### 2. Normal User — Access Forbidden
 
 A valid normal user attempted the same admin-only action and received `403 Forbidden`.
 
-### 3. No Authentication
+![Normal user forbidden](screenshots/user-forbidden.png)
 
-![No token](task-8-screenshots/no-token.png)
+### 3. No Authentication — Unauthorized
 
 A request without an authentication token received `401 Unauthorized`.
 
+![No authentication](screenshots/no-token.png)
+
 ### 4. User Roles
 
-![User roles](task-8-screenshots/user-roles.png)
-
-The database contains separate admin and normal user roles.
-
-### Database Roles
-
 The database shows separate `admin` and `user` roles.
+
+![User roles](screenshots/user-roles.png)
 
 ## Main API Endpoints
 
@@ -260,46 +258,9 @@ DELETE /bookings/:id
 
 Admin role required.
 
-## Project Structure
-
-```text
-salon-booking-api/
-│
-├── config/
-│   └── cloudinary.js
-│
-├── middleware/
-│   ├── auth.js
-│   ├── authorize.js
-│   ├── errorHandler.js
-│   ├── upload.js
-│   └── validate.js
-│
-├── models/
-│   ├── Booking.js
-│   ├── Review.js
-│   ├── Service.js
-│   └── User.js
-│
-├── utils/
-│   ├── AppError.js
-│   ├── catchAsync.js
-│   ├── cloudinaryUpload.js
-│   └── response.js
-│
-├── validators/
-│   ├── bookingValidator.js
-│   ├── reviewValidator.js
-│   └── userValidator.js
-│
-├── server.js
-├── package.json
-└── README.md
-```
-
 ## Running the Project
 
-Install dependencies:
+Install the dependencies:
 
 ```bash
 npm install
@@ -318,19 +279,3 @@ The API runs on:
 ```text
 http://localhost:3000
 ```
-
-## Result
-
-Role-based access control has been added to the Salon Booking API.
-
-The API now:
-
-* Supports `user` and `admin` roles
-* Assigns new users the `user` role by default
-* Includes the user's role in the JWT
-* Uses reusable authorization middleware
-* Restricts admin-only actions
-* Returns `403 Forbidden` for authenticated users without permission
-* Returns `401 Unauthorized` for unauthenticated requests
-* Has been tested with admin, normal user, and unauthenticated scenarios
-**Don't merge it into `main` yet** unless your internship specifically asks you to. Keeping each task on its own branch is cleaner and gives you a clear record of your work.

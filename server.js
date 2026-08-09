@@ -1,3 +1,5 @@
+require("dotenv").config();
+const cloudinary = require("./config/cloudinary");
 const express = require("express");
 const AppError = require("./utils/AppError");
 const errorHandler = require("./middleware/errorHandler");
@@ -6,7 +8,10 @@ const catchAsync = require("./utils/catchAsync");
 const validate = require("./middleware/validate");
 const { bookingSchema } = require("./validators/bookingValidator");
 const { reviewSchema } = require("./validators/reviewValidator");
+const upload = require("./middleware/upload");
+const uploadToCloudinary = require("./utils/cloudinaryUpload");
 const { Op } = require("sequelize");
+
 const {
     signupSchema,
     loginSchema
@@ -340,6 +345,51 @@ app.post(
         sendSuccess(res, 200, {
             message: "Login successful!",
             token
+        });
+    })
+);
+// UPLOAD PROFILE PICTURE
+app.post(
+    "/users/profile-picture",
+    authenticateToken,
+    upload.single("profileImage"),
+    catchAsync(async (req, res) => {
+        if (!req.file) {
+            throw new AppError("Please upload a profile image.", 400);
+        }
+
+        const result = await uploadToCloudinary(req.file.buffer);
+
+        const user = await User.findByPk(req.user.userId);
+
+        if (!user) {
+            throw new AppError("User not found.", 404);
+        }
+
+        user.profileImage = result.secure_url;
+        await user.save();
+
+        sendSuccess(res, 200, {
+            message: "Profile picture uploaded successfully!",
+            profileImage: user.profileImage
+        });
+    })
+);
+// GET CURRENT USER PROFILE
+app.get(
+    "/users/profile",
+    authenticateToken,
+    catchAsync(async (req, res) => {
+        const user = await User.findByPk(req.user.userId, {
+            attributes: ["id", "email", "profileImage"]
+        });
+
+        if (!user) {
+            throw new AppError("User not found.", 404);
+        }
+
+        sendSuccess(res, 200, {
+            user
         });
     })
 );

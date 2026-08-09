@@ -335,4 +335,3 @@ http://localhost:3000
 ## Task Result
 
 The file upload feature is now implemented using Cloudinary for cloud storage. Uploaded profile pictures are validated, stored securely, linked to the user's database record through the Cloudinary URL, and can be retrieved through the profile endpoint.
-```

@@ -198,25 +198,25 @@ Public signup does not allow users to choose their own role.
 
 The admin user was able to delete the booking successfully and received a `200 OK` response.
 
-![Admin access allowed](screenshots/admin-allowed.png)
+![Admin access allowed](screenshots/task-8-admin-allowed.png)
 
 ### 2. Normal User — Access Forbidden
 
 A valid normal user attempted the same admin-only action and received `403 Forbidden`.
 
-![Normal user forbidden](screenshots/user-forbidden.png)
+![Normal user forbidden](screenshots/task-8-user-forbidden.png)
 
 ### 3. No Authentication — Unauthorized
 
 A request without an authentication token received `401 Unauthorized`.
 
-![No authentication](screenshots/no-token.png)
+![No authentication](screenshots/task-8-no-token-unauthorized.png)
 
 ### 4. User Roles
 
 The database shows separate `admin` and `user` roles.
 
-![User roles](screenshots/user-roles.png)
+![User roles](screenshots/task-8-user-roles.png)
 
 ## Main API Endpoints
 

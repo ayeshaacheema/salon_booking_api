@@ -16,20 +16,19 @@ This task adds role-based access control so different users can have different p
 - Cloudinary
 - Multer
 
-## Task 8 — Roles and Permissions
+---
 
-The API now supports two user roles:
+# Task 8 — Roles and Permissions
 
-- `user`
-- `admin`
+The API now supports two roles: `user` and `admin`. New users get the `user` role by default, and some actions — like deleting a booking — are restricted to admins.
 
-New users are assigned the `user` role by default.
+---
 
-The user's role is stored in the database and included in the JWT after login.
+# Changes Made in This Task
 
-## User Roles
+## 1. Added a role field to the User model — `models/User.js`
 
-The `User` model now contains a `role` field:
+The User model previously stored just email, password, and profile image. I added a `role` field:
 
 ```js
 role: {
@@ -39,83 +38,106 @@ role: {
 }
 ```
 
-The default value is `user`, so newly registered accounts cannot automatically become administrators.
+It's an enum so the value can only ever be `user` or `admin`, it's required, and it defaults to `user` so nobody ends up with a missing role. Sequelize's `sync({ alter: true })` picked up the new column and updated the table.
 
-Users also cannot assign themselves the `admin` role during signup.
+## 2. Made sure users can't self-assign admin — `server.js`
 
-## Authentication
+The signup endpoint only pulls `email` and `password` from the request body — it never reads `role` from what the client sends:
 
-When a user logs in, their role is included in the JWT.
+```js
+const { email, password } = req.body;
 
-Example:
-
-```json
-{
-    "userId": 1,
-    "email": "admin@example.com",
-    "role": "admin"
-}
+const user = await User.create({
+    email,
+    password: hashedPassword
+});
 ```
 
-The authentication middleware verifies the token and stores the decoded information in `req.user`.
+So even if someone sends `role: "admin"` in their signup payload, it's ignored and the model default (`user`) kicks in. For testing, I assigned the admin role directly in the database instead of building a public "become admin" path.
 
-## Role Authorization Middleware
+## 3. Built the authorization middleware — `middleware/authorize.js` (new file)
 
-A new authorization middleware was added:
-
-```text
-middleware/authorize.js
-```
-
-It provides a reusable `authorizeRoles()` function.
-
-Example:
+This is the piece that actually checks permissions. It exports `authorizeRoles()`, which takes the roles allowed to do something:
 
 ```js
 authorizeRoles("admin")
 ```
 
-The middleware checks whether the authenticated user's role is allowed to perform the requested action.
+Internally it reads `req.user.role` (set earlier by the auth middleware) and checks it against the allowed list. If it matches, it calls `next()` and the request continues. If not, it returns a `403`:
 
-If the user has the required role, the request continues.
-
-If the user is authenticated but does not have the required role, the API returns:
-
-```text
-403 Forbidden
+```js
+return next(
+    new AppError("You do not have permission to perform this action.", 403)
+);
 ```
 
-## Protected Endpoint
+## 4. Added role to the JWT — `server.js`
 
-The following endpoint is restricted to administrators:
+The login endpoint now signs the role into the token along with the user ID and email:
 
-```http
-DELETE /bookings/:id
+```js
+const token = jwt.sign(
+    {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN }
+);
 ```
 
-The request passes through both authentication and authorization middleware:
+This matters because `authorizeRoles()` needs to know the role without hitting the database again on every request — it just reads it off the decoded token.
 
-```text
-Request
-   ↓
-authenticateToken
-   ↓
-authorizeRoles("admin")
-   ↓
-Delete Booking
+## 5. Protected the delete booking route — `server.js`
+
+`DELETE /bookings/:id` used to only require `authenticateToken`. Now it also requires `authorizeRoles("admin")`:
+
+```js
+app.delete(
+    "/bookings/:id",
+    authenticateToken,
+    authorizeRoles("admin"),
+    catchAsync(async (req, res) => {
+        // delete booking
+    })
+);
 ```
 
-Only users with the `admin` role can delete bookings.
+A normal authenticated user can still use everything else in the API, just not this.
 
-## 401 vs 403
+## 6. Kept authentication and authorization separate
 
-The API distinguishes between authentication and authorization failures.
+`middleware/auth.js` handles authentication — verifying the JWT and attaching the decoded user to `req.user`. If the token's missing or invalid, that's a `401`.
 
-### 401 Unauthorized
+`middleware/authorize.js` handles authorization — checking whether the (already authenticated) user's role is allowed to do the thing they're trying to do. If not, that's a `403`.
 
-Returned when a request does not contain a valid authentication token.
+Keeping these as two separate middlewares meant I didn't have to duplicate role-checking logic in every route — I just chain `authorizeRoles("admin")` onto whatever route needs it.
 
-Example:
+## 7. Database
+
+Added the `role` column to the `Users` table and tested with two accounts:
+
+| Email | Role |
+| ----- | ---- |
+| ayesha@test.com | admin |
+| testuser@gmail.com | user |
+
+## 8. Tested three scenarios
+
+- **Admin deletes a booking** → `200 OK`, booking deleted.
+- **Normal user tries to delete a booking** → request passes authentication but fails at `authorizeRoles("admin")`, returns `403 Forbidden`.
+- **No token at all** → request never even reaches the authorization check, rejected at `authenticateToken` with `401 Unauthorized`.
+
+That confirmed the two failure modes are actually distinct in practice, not just in theory.
+
+---
+
+# 401 vs 403
+
+## 401 Unauthorized
+
+Returned when the request doesn't contain a valid authentication token.
 
 ```json
 {
@@ -123,11 +145,9 @@ Example:
 }
 ```
 
-### 403 Forbidden
+## 403 Forbidden
 
-Returned when the user is authenticated but does not have the required role.
-
-Example:
+Returned when the user is authenticated but doesn't have the required role.
 
 ```json
 {
@@ -139,95 +159,138 @@ Example:
 }
 ```
 
-## Testing
+---
 
-Three role and permission scenarios were tested.
+# Testing
 
-### 1. Admin User — Access Allowed
+## Test 1 — Admin User
 
 An authenticated admin user attempted to delete a booking.
 
-Result:
-
-```text
-200 OK
-```
-
-The booking was successfully deleted.
-
-### 2. Normal User — Access Forbidden
-
-An authenticated normal user attempted to delete a booking.
-
-Result:
-
-```text
-403 Forbidden
-```
-
-The booking was not deleted.
-
-### 3. No Authentication — Unauthorized
-
-A request was sent without a JWT token.
-
-Result:
-
-```text
-401 Unauthorized
-```
-
-The request was rejected because no authentication token was provided.
-
-## Test Users
-
-Two accounts were used to test the role restrictions:
-
-| Email | Role |
-| ----- | ---- |
-| ayesha@test.com | admin |
-| testuser@gmail.com | user |
-
-The admin role was assigned directly in the database for testing.
-
-Public signup does not allow users to choose their own role.
-
-## Screenshots
-
-### 1. Admin — Access Allowed
-
-The admin user was able to delete the booking successfully and received a `200 OK` response.
+**Result:** `200 OK` — the booking was successfully deleted.
 
 ![Admin access allowed](screenshots/task-8-admin-allowed.png)
 
-### 2. Normal User — Access Forbidden
+## Test 2 — Normal User
 
-A valid normal user attempted the same admin-only action and received `403 Forbidden`.
+An authenticated normal user attempted to delete a booking.
+
+**Result:** `403 Forbidden` — the booking was not deleted.
 
 ![Normal user forbidden](screenshots/task-8-user-forbidden.png)
 
-### 3. No Authentication — Unauthorized
+## Test 3 — No Authentication
 
-A request without an authentication token received `401 Unauthorized`.
+A request was sent without a JWT token.
+
+**Result:** `401 Unauthorized` — the request was rejected because no authentication token was provided.
 
 ![No authentication](screenshots/task-8-no-token-unauthorized.png)
 
-### 4. User Roles
+---
 
-The database shows separate `admin` and `user` roles.
+# Database Role Testing
+
+```sql
+SELECT id, email, role
+FROM "Users";
+```
+
+Result:
+
+```text
+id | email               | role
+---+---------------------+------
+1  | ayesha@test.com     | admin
+2  | testuser@gmail.com  | user
+```
 
 ![User roles](screenshots/task-8-user-roles.png)
 
-## Main API Endpoints
+---
 
-### Authentication
+# Files Changed in Task 8
+
+### Modified
+
+```text
+models/User.js
+```
+Added the `role` field with `user` as the default.
+
+```text
+server.js
+```
+Stopped accepting `role` from the signup payload, added `role` to the JWT, and protected `DELETE /bookings/:id` with `authorizeRoles("admin")`.
+
+### Added
+
+```text
+middleware/authorize.js
+```
+New reusable role-based authorization middleware.
+
+### Database
+
+The `Users` table was updated with the new `role` column.
+
+---
+
+# Project Structure
+
+```text
+salon-booking-api/
+│
+├── config/
+│   └── cloudinary.js
+│
+├── middleware/
+│   ├── auth.js
+│   ├── authorize.js          # Added in Task 8
+│   ├── errorHandler.js
+│   ├── upload.js
+│   └── validate.js
+│
+├── models/
+│   ├── Booking.js
+│   ├── Review.js
+│   ├── Service.js
+│   └── User.js               # Modified in Task 8
+│
+├── utils/
+│   ├── AppError.js
+│   ├── catchAsync.js
+│   ├── cloudinaryUpload.js
+│   └── response.js
+│
+├── validators/
+│   ├── bookingValidator.js
+│   ├── reviewValidator.js
+│   └── userValidator.js
+│
+├── screenshots/
+│   ├── task-8-admin-allowed.png
+│   ├── task-8-user-forbidden.png
+│   ├── task-8-no-token-unauthorized.png
+│   └── task-8-user-roles.png
+│
+├── server.js                  # Modified in Task 8
+├── package.json
+└── README.md
+```
+
+---
+
+# Main API Endpoints
+
+## Authentication
 
 ```text
 POST /auth/signup
 POST /auth/login
 ```
 
-### Bookings
+## Bookings
 
 ```text
 GET    /bookings
@@ -236,39 +299,31 @@ PUT    /bookings/:id
 DELETE /bookings/:id
 ```
 
-### Reviews
+`DELETE /bookings/:id` requires the `admin` role.
+
+## Reviews
 
 ```text
 POST /services/:id/reviews
 GET  /services/:id/reviews
 ```
 
-### User
+## User
 
 ```text
 GET  /users/profile
 POST /users/profile-picture
 ```
 
-### Role-Protected Endpoint
+---
 
-```text
-DELETE /bookings/:id
-```
-
-Admin role required.
-
-## Running the Project
-
-Install the dependencies:
+# Running the Project
 
 ```bash
 npm install
 ```
 
 Create a `.env` file with the required database, JWT, and Cloudinary configuration.
-
-Start the development server:
 
 ```bash
 npm run dev

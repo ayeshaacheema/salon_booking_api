@@ -1,159 +1,336 @@
-# Salon Booking API
+# Salon Booking API — Role-Based Access Control (RBAC)
 
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+A REST API for a salon booking system built with Node.js, Express, PostgreSQL, Sequelize, JWT authentication, and Zod validation.
+
+This task adds role-based access control so different users can have different permissions.
 
 ## Tech Stack
 
-- Node.js / Express
-- PostgreSQL + Sequelize
-- bcrypt for password hashing
-- jsonwebtoken for auth
-- Postman for testing
+- Node.js
+- Express.js
+- PostgreSQL
+- Sequelize
+- JWT
+- bcrypt
+- Zod
+- Cloudinary
+- Multer
 
-## Project Structure
+## Task 8 — Roles and Permissions
 
-```
-salon-booking-api/
-├── models/
-│   ├── Service.js
-│   ├── Booking.js
-│   └── User.js
-├── middleware/
-│   └── auth.js
-├── db.js
-├── server.js
-├── .env
-├── .env.example
-├── postman/
-├── screenshots/
-└── README.md
-```
+The API now supports two user roles:
 
-## Setup
+- `user`
+- `admin`
 
-1. Clone the repo
-```
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-cd salon_booking_api
-```
+New users are assigned the `user` role by default.
 
-2. Install dependencies
-```
-npm install
-```
+The role is stored in the database and included in the JWT after login.
 
-3. Set up PostgreSQL - create a database:
-```sql
-CREATE DATABASE salon_booking_db;
-```
+## User Roles
 
-4. Create a `.env` file in the root (there's an `.env.example` you can copy from):
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=salon_booking_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_random_secret
-JWT_EXPIRES_IN=1h
-```
+The `User` model now contains a role field:
 
-You can generate a random secret with:
-```
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+```js
+role: {
+    type: DataTypes.ENUM("user", "admin"),
+    allowNull: false,
+    defaultValue: "user"
+}
+````
 
-5. Run it
-```
-node server.js
-```
+This prevents users from having an empty role and automatically assigns new accounts the `user` role.
 
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
+Users cannot assign themselves the `admin` role during signup.
 
-## Database
+## Authentication
 
-Two related tables:
-- `Services` - id, name
-- `Bookings` - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
+When a user logs in, their role is included in the JWT.
 
-A booking belongs to a service, a service can have many bookings.
+Example:
 
-## Endpoints
-
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| POST | /auth/signup | create a new user | no |
-| POST | /auth/login | log in, get back a token | no |
-| GET | /bookings | list all bookings | no |
-| GET | /bookings/:id | get one booking | no |
-| POST | /bookings | create a booking | yes |
-| PUT | /bookings/:id | update a booking | no |
-| DELETE | /bookings/:id | delete a booking | yes |
-
-### Sample: create a booking
-
-```
-POST /bookings
-```
 ```json
 {
-  "service": "Haircut",
-  "date": "2026-07-28",
-  "time": "3:00 PM",
-  "name": "Ayesha Cheema",
-  "phone": "03001234567",
-  "notes": "First time client"
+    "userId": 1,
+    "email": "admin@example.com",
+    "role": "admin"
 }
 ```
 
-## Auth
+The authentication middleware verifies the token and stores the decoded information in `req.user`.
 
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
+## Role Authorization Middleware
 
-**Signup**
-```
-POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
+A new middleware was added:
+
+```text
+middleware/authorize.js
 ```
 
-**Login** - returns a JWT
+It provides a reusable `authorizeRoles()` function.
+
+Example:
+
+```js
+authorizeRoles("admin")
 ```
-POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
+
+The middleware checks whether the authenticated user's role is allowed to perform the requested action.
+
+If the user has the required role, the request continues.
+
+If the user is authenticated but does not have the required role, the API returns:
+
+```text
+403 Forbidden
 ```
-response:
+
+## Protected Endpoint
+
+The following endpoint is restricted to administrators:
+
+```http
+DELETE /bookings/:id
+```
+
+The request passes through both authentication and authorization middleware:
+
+```text
+Request
+   ↓
+authenticateToken
+   ↓
+authorizeRoles("admin")
+   ↓
+Delete Booking
+```
+
+Only users with the `admin` role can delete bookings.
+
+## 401 vs 403
+
+The API distinguishes between authentication and authorization failures.
+
+### 401 Unauthorized
+
+Returned when the request does not contain a valid authentication token.
+
+Example:
+
 ```json
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
+{
+    "message": "No token provided."
+}
 ```
 
-To hit a protected route, add this header:
+### 403 Forbidden
+
+Returned when the user has successfully authenticated but does not have the required role.
+
+Example:
+
+```json
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "You do not have permission to perform this action."
+    }
+}
 ```
-Authorization: Bearer <token>
-```
-
-`POST /bookings` and `DELETE /bookings/:id` require this. The rest don't.
-
-Token expires based on `JWT_EXPIRES_IN` in `.env` (currently 1h).
-
-### Error responses
-
-| Case | Status | Message |
-|---|---|---|
-| wrong email/password | 401 | Invalid email or password. |
-| no token sent | 401 | No token provided. |
-| token expired | 401 | Token has expired. Please log in again. |
-| bad/tampered token | 403 | Invalid token. |
-| email already taken | 400 | Email already in use. |
-
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
 
 ## Testing
 
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in `postman/`, some screenshots in `screenshots/`.
+Three role and permission scenarios were tested.
 
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
+### Test 1 — Admin User
 
-## Author
+An authenticated admin user attempted to delete a booking.
 
-Ayesha Cheema
-github.com/ayeshaacheema
+Result:
+
+```text
+200 OK
+```
+
+The booking was successfully deleted.
+
+### Test 2 — Normal User
+
+An authenticated normal user attempted to delete a booking.
+
+Result:
+
+```text
+403 Forbidden
+```
+
+The booking was not deleted.
+
+### Test 3 — No Authentication
+
+A request was sent without a JWT token.
+
+Result:
+
+```text
+401 Unauthorized
+```
+
+The request was rejected because no authentication token was provided.
+
+## Test Users
+
+Two accounts were used to test the role restrictions:
+
+| Email                                           | Role  |
+| ----------------------------------------------- | ----- |
+| [ayesha@test.com](mailto:ayesha@test.com)       | admin |
+| [testuser@gmail.com](mailto:testuser@gmail.com) | user  |
+
+The admin role was assigned directly in the database for testing. Public signup does not allow users to choose their own role.
+
+## Screenshots
+
+### 1. Admin - Access Allowed
+
+![Admin allowed](task-8-screenshots/admin-allowed.png)
+
+The admin user was able to delete the booking successfully and received a `200 OK` response.
+
+### 2. Normal User - Access Forbidden
+
+![Normal user forbidden](task-8-screenshots/user-forbidden.png)
+
+A valid normal user attempted the same admin-only action and received `403 Forbidden`.
+
+### 3. No Authentication
+
+![No token](task-8-screenshots/no-token.png)
+
+A request without an authentication token received `401 Unauthorized`.
+
+### 4. User Roles
+
+![User roles](task-8-screenshots/user-roles.png)
+
+The database contains separate admin and normal user roles.
+
+### Database Roles
+
+The database shows separate `admin` and `user` roles.
+
+## Main API Endpoints
+
+### Authentication
+
+```text
+POST /auth/signup
+POST /auth/login
+```
+
+### Bookings
+
+```text
+GET    /bookings
+POST   /bookings
+PUT    /bookings/:id
+DELETE /bookings/:id
+```
+
+### Reviews
+
+```text
+POST /services/:id/reviews
+GET  /services/:id/reviews
+```
+
+### User
+
+```text
+GET  /users/profile
+POST /users/profile-picture
+```
+
+### Role-Protected Endpoint
+
+```text
+DELETE /bookings/:id
+```
+
+Admin role required.
+
+## Project Structure
+
+```text
+salon-booking-api/
+│
+├── config/
+│   └── cloudinary.js
+│
+├── middleware/
+│   ├── auth.js
+│   ├── authorize.js
+│   ├── errorHandler.js
+│   ├── upload.js
+│   └── validate.js
+│
+├── models/
+│   ├── Booking.js
+│   ├── Review.js
+│   ├── Service.js
+│   └── User.js
+│
+├── utils/
+│   ├── AppError.js
+│   ├── catchAsync.js
+│   ├── cloudinaryUpload.js
+│   └── response.js
+│
+├── validators/
+│   ├── bookingValidator.js
+│   ├── reviewValidator.js
+│   └── userValidator.js
+│
+├── server.js
+├── package.json
+└── README.md
+```
+
+## Running the Project
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create a `.env` file with the required database, JWT, and Cloudinary configuration.
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The API runs on:
+
+```text
+http://localhost:3000
+```
+
+## Result
+
+Role-based access control has been added to the Salon Booking API.
+
+The API now:
+
+* Supports `user` and `admin` roles
+* Assigns new users the `user` role by default
+* Includes the user's role in the JWT
+* Uses reusable authorization middleware
+* Restricts admin-only actions
+* Returns `403 Forbidden` for authenticated users without permission
+* Returns `401 Unauthorized` for unauthenticated requests
+* Has been tested with admin, normal user, and unauthenticated scenarios
+**Don't merge it into `main` yet** unless your internship specifically asks you to. Keeping each task on its own branch is cleaner and gives you a clear record of your work.

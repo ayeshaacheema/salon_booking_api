@@ -1,159 +1,342 @@
-# Salon Booking API
+# Salon Booking API - File Upload & Storage
 
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+This task adds file upload functionality to the Salon Booking API. Users can upload a profile picture, the image is validated before upload, stored on Cloudinary, and the resulting URL is saved in PostgreSQL.
 
-## Tech Stack
+## Task Requirements
 
-- Node.js / Express
-- PostgreSQL + Sequelize
-- bcrypt for password hashing
-- jsonwebtoken for auth
-- Postman for testing
+- Add an endpoint for file uploads
+- Validate file type and size
+- Store uploaded files using cloud storage
+- Save the uploaded file URL in the database
+- Handle upload failures with clear error messages
+- Retrieve and display the uploaded file
 
-## Project Structure
+## Tech Used
 
-```
-salon-booking-api/
-├── models/
-│   ├── Service.js
-│   ├── Booking.js
-│   └── User.js
-├── middleware/
-│   └── auth.js
-├── db.js
-├── server.js
-├── .env
-├── .env.example
-├── postman/
-├── screenshots/
-└── README.md
-```
+- Node.js
+- Express.js
+- PostgreSQL
+- Sequelize
+- Multer
+- Cloudinary
+- JWT Authentication
 
-## Setup
+## File Upload
 
-1. Clone the repo
-```
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-cd salon_booking_api
-```
+### POST `/users/profile-picture`
 
-2. Install dependencies
-```
-npm install
-```
+This endpoint allows an authenticated user to upload a profile picture.
 
-3. Set up PostgreSQL - create a database:
-```sql
-CREATE DATABASE salon_booking_db;
+The request uses `multipart/form-data`.
+
+### Request
+
+```text
+POST /users/profile-picture
+````
+
+Authorization:
+
+```text
+Bearer <JWT token>
 ```
 
-4. Create a `.env` file in the root (there's an `.env.example` you can copy from):
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=salon_booking_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_random_secret
-JWT_EXPIRES_IN=1h
+Form-data:
+
+```text
+profileImage: <image file>
 ```
 
-You can generate a random secret with:
+## File Validation
+
+Only the following image types are accepted:
+
+* JPG / JPEG
+* PNG
+* WEBP
+
+The maximum allowed file size is:
+
+```text
+5 MB
 ```
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
 
-5. Run it
-```
-node server.js
-```
+Invalid file types are rejected with a clear error message:
 
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
-
-## Database
-
-Two related tables:
-- `Services` - id, name
-- `Bookings` - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
-
-A booking belongs to a service, a service can have many bookings.
-
-## Endpoints
-
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| POST | /auth/signup | create a new user | no |
-| POST | /auth/login | log in, get back a token | no |
-| GET | /bookings | list all bookings | no |
-| GET | /bookings/:id | get one booking | no |
-| POST | /bookings | create a booking | yes |
-| PUT | /bookings/:id | update a booking | no |
-| DELETE | /bookings/:id | delete a booking | yes |
-
-### Sample: create a booking
-
-```
-POST /bookings
-```
 ```json
 {
-  "service": "Haircut",
-  "date": "2026-07-28",
-  "time": "3:00 PM",
-  "name": "Ayesha Cheema",
-  "phone": "03001234567",
-  "notes": "First time client"
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "Only JPG, PNG, and WEBP images are allowed."
+    }
 }
 ```
 
-## Auth
+Files larger than 5 MB are also rejected:
 
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
-
-**Signup**
-```
-POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
-```
-
-**Login** - returns a JWT
-```
-POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
-```
-response:
 ```json
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "File size must not exceed 5 MB."
+    }
+}
 ```
 
-To hit a protected route, add this header:
+## Cloudinary Storage
+
+Uploaded images are stored in Cloudinary under:
+
+```text
+salon-booking/profile-images
 ```
-Authorization: Bearer <token>
+
+The application uses Multer with memory storage, so the file is not permanently stored on the local server.
+
+After a successful upload, Cloudinary returns a secure URL.
+
+Example:
+
+```json
+{
+    "success": true,
+    "data": {
+        "message": "Profile picture uploaded successfully!",
+        "profileImage": "https://res.cloudinary.com/..."
+    },
+    "error": null
+}
 ```
 
-`POST /bookings` and `DELETE /bookings/:id` require this. The rest don't.
+## Database Integration
 
-Token expires based on `JWT_EXPIRES_IN` in `.env` (currently 1h).
+The Cloudinary URL is stored in the `profileImage` field of the `Users` table.
 
-### Error responses
+The database stores the URL rather than the actual image file.
 
-| Case | Status | Message |
-|---|---|---|
-| wrong email/password | 401 | Invalid email or password. |
-| no token sent | 401 | No token provided. |
-| token expired | 401 | Token has expired. Please log in again. |
-| bad/tampered token | 403 | Invalid token. |
-| email already taken | 400 | Email already in use. |
+Example:
 
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
+```text
+Users
+------------------------------------------------
+id | email | profileImage
+------------------------------------------------
+1  | user@example.com | https://res.cloudinary.com/...
+```
+
+## Profile Retrieval
+
+### GET `/users/profile`
+
+This endpoint retrieves the authenticated user's profile information, including the stored profile image URL.
+
+```text
+GET /users/profile
+```
+
+Authorization:
+
+```text
+Bearer <JWT token>
+```
+
+Example response:
+
+```json
+{
+    "success": true,
+    "data": {
+        "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "profileImage": "https://res.cloudinary.com/..."
+        }
+    },
+    "error": null
+}
+```
+
+The returned Cloudinary URL can then be opened in a browser to display the uploaded image.
+
+## Error Handling
+
+Upload errors are handled through the existing centralized error-handling middleware.
+
+The API handles:
+
+* Missing file
+* Invalid file type
+* Files larger than 5 MB
+* Multer upload errors
+* Cloudinary upload failures
+* User not found errors
+
+All errors follow the API's standard response format:
+
+```json
+{
+    "success": false,
+    "data": null,
+    "error": {
+        "message": "Error message"
+    }
+}
+```
+
+## Files Added / Updated
+
+### Added
+
+```text
+middleware/upload.js
+utils/cloudinaryUpload.js
+```
+
+### Updated
+
+```text
+models/User.js
+middleware/errorHandler.js
+server.js
+```
+
+The `User` model now includes:
+
+```text
+profileImage
+```
 
 ## Testing
 
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in `postman/`, some screenshots in `screenshots/`.
+The following cases were tested:
 
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
+* Successful profile picture upload
+* JPG image upload
+* Cloudinary storage
+* Cloudinary URL returned by the API
+* Cloudinary URL stored in PostgreSQL
+* Profile image retrieval
+* Invalid file type rejection
+* File size limit rejection
+* Missing file handling
 
-## Author
+## Screenshots
 
-Ayesha Cheema
-github.com/ayeshaacheema
+### 1. Successful Profile Picture Upload
+
+The image is uploaded successfully and the Cloudinary URL is returned.
+
+![Successful Upload](screenshots/task-7-upload-success.png)
+
+### 2. Cloudinary Storage
+
+The uploaded image can be seen in the Cloudinary Media Library.
+
+![Cloudinary Storage](screenshots/task-7-cloudinary.png)
+
+### 3. Profile Image URL Stored in PostgreSQL
+
+The Cloudinary URL is stored in the `profileImage` field of the user's database record.
+
+![Database URL](screenshots/task-7-database-url.png)
+
+### 4. Invalid File Type
+
+The API rejects unsupported file types.
+
+![Invalid File Type](screenshots/task-7-invalid-file-type.png)
+
+### 5. File Size Validation
+
+Files larger than 5 MB are rejected.
+
+![File Too Large](screenshots/task-7-file-too-large.png)
+
+### 6. Profile Image Retrieval
+
+The uploaded profile image URL is retrieved through the profile endpoint.
+
+![Profile Retrieval](screenshots/task-7-profile-retrieval.png)
+
+## Upload Flow
+
+```text
+Client
+   |
+   | multipart/form-data
+   v
+POST /users/profile-picture
+   |
+   v
+JWT Authentication
+   |
+   v
+Multer
+   |
+   +--> File type validation
+   |
+   +--> File size validation
+   |
+   v
+Cloudinary
+   |
+   v
+Cloudinary secure URL
+   |
+   v
+PostgreSQL
+   |
+   v
+Users.profileImage
+   |
+   v
+GET /users/profile
+   |
+   v
+Profile image URL
+```
+
+## Environment Variables
+
+Cloudinary credentials are stored in the `.env` file and are not committed to GitHub.
+
+Required environment variables:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+Other existing environment variables required by the application should also be configured in `.env`.
+
+## Running the Project
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The API runs on:
+
+```text
+http://localhost:3000
+```
+
+## Task Result
+
+The file upload feature is now implemented using Cloudinary for cloud storage. Uploaded profile pictures are validated, stored securely, linked to the user's database record through the Cloudinary URL, and can be retrieved through the profile endpoint.
+
+```
+````
+
+And **make sure `.env` is in `.gitignore`** before pushing, because your Cloudinary credentials and JWT/database secrets must not go to GitHub.

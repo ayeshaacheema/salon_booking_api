@@ -11,6 +11,7 @@ const { reviewSchema } = require("./validators/reviewValidator");
 const upload = require("./middleware/upload");
 const uploadToCloudinary = require("./utils/cloudinaryUpload");
 const { Op } = require("sequelize");
+const authorizeRoles = require("./middleware/authorize");
 
 const {
     signupSchema,
@@ -204,6 +205,7 @@ app.put(
 app.delete(
     "/bookings/:id",
     authenticateToken,
+    authorizeRoles("admin"),
     catchAsync(async (req, res) => {
         const booking = await Booking.findByPk(req.params.id);
 
@@ -332,15 +334,16 @@ app.post(
         }
 
         const token = jwt.sign(
-            {
-                userId: user.id,
-                email: user.email
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: process.env.JWT_EXPIRES_IN
-            }
-        );
+    {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+    },
+    process.env.JWT_SECRET,
+    {
+        expiresIn: process.env.JWT_EXPIRES_IN
+    }
+);
 
         sendSuccess(res, 200, {
             message: "Login successful!",
@@ -381,7 +384,7 @@ app.get(
     authenticateToken,
     catchAsync(async (req, res) => {
         const user = await User.findByPk(req.user.userId, {
-            attributes: ["id", "email", "profileImage"]
+            attributes: ["id", "email", "profileImage", "role"]
         });
 
         if (!user) {

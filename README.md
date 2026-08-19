@@ -171,7 +171,7 @@ The automated tests focus on the core functionality required for this task. The 
 
 The final test run:
 
-![All tests passed](screenshots/testing-all-tests-passed.png)
+![All tests passed](screenshots/integration-and-unit-tests-passed.png)
 
 ```
 Test Suites: 3 passed, 3 total

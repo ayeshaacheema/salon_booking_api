@@ -1,159 +1,174 @@
-# Salon Booking API
+Task 9 — Testing and API Documentation
 
-A REST API for managing salon bookings, built with Node.js and Express. Started as a simple in-memory CRUD app and has since been upgraded to use PostgreSQL for storage and JWT-based authentication for protected routes.
+The task required:
 
-## Tech Stack
+Unit tests for at least 2 core pieces of logic.
+Integration tests for at least 5 API endpoints.
+A happy path and at least one failure case for each integration endpoint.
+API documentation.
+A summary of what is and isn't covered by the tests.
+Changes Made in This Task
+1. Added automated testing with Jest and Supertest
 
-- Node.js / Express
-- PostgreSQL + Sequelize
-- bcrypt for password hashing
-- jsonwebtoken for auth
-- Postman for testing
+The project now uses Jest for testing and Supertest for sending HTTP requests to the Express application.
 
-## Project Structure
+Tests can be run with:
 
-```
-salon-booking-api/
-├── models/
-│   ├── Service.js
-│   ├── Booking.js
-│   └── User.js
-├── middleware/
-│   └── auth.js
-├── db.js
-├── server.js
-├── .env
-├── .env.example
-├── postman/
-├── screenshots/
-└── README.md
-```
+npm test
+2. Added test database setup — test/setup.js
 
-## Setup
+A separate test environment is used for automated tests.
 
-1. Clone the repo
-```
-git clone https://github.com/ayeshaacheema/salon_booking_api.git
-cd salon_booking_api
-```
+Before testing:
 
-2. Install dependencies
-```
-npm install
-```
+beforeAll(async () => {
+    await sequelize.authenticate();
+    await sequelize.sync({ force: true });
+});
 
-3. Set up PostgreSQL - create a database:
-```sql
-CREATE DATABASE salon_booking_db;
-```
+After testing:
 
-4. Create a `.env` file in the root (there's an `.env.example` you can copy from):
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=salon_booking_db
-DB_USER=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_random_secret
-JWT_EXPIRES_IN=1h
-```
+afterAll(async () => {
+    await sequelize.close();
+});
 
-You can generate a random secret with:
-```
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+Using sync({ force: true }) gives the tests a clean database before each test run.
 
-5. Run it
-```
-node server.js
-```
+3. Added Unit Tests
+Booking Validation — test/bookingValidator.test.js
 
-Tables get created automatically on startup (Sequelize handles this). If the DB connection fails for any reason the server logs the error and exits instead of hanging or crashing silently.
+Tested:
 
-## Database
+Valid booking data → accepted.
+Invalid booking data → rejected.
+Authorization — test/authorize.test.js
 
-Two related tables:
-- `Services` - id, name
-- `Bookings` - id, date, time, name, phone, notes, serviceId (fk -> Services.id)
+Tested:
 
-A booking belongs to a service, a service can have many bookings.
+User with the required role → allowed.
+User without the required role → 403 Forbidden.
 
-## Endpoints
+This verifies the core validation and authorization logic independently.
 
-| Method | Route | Description | Needs token? |
-|---|---|---|---|
-| POST | /auth/signup | create a new user | no |
-| POST | /auth/login | log in, get back a token | no |
-| GET | /bookings | list all bookings | no |
-| GET | /bookings/:id | get one booking | no |
-| POST | /bookings | create a booking | yes |
-| PUT | /bookings/:id | update a booking | no |
-| DELETE | /bookings/:id | delete a booking | yes |
+4. Added Integration Tests
 
-### Sample: create a booking
+Integration tests verify that the routes, middleware, validation, authentication, database, and responses work together.
 
-```
-POST /bookings
-```
-```json
-{
-  "service": "Haircut",
-  "date": "2026-07-28",
-  "time": "3:00 PM",
-  "name": "Ayesha Cheema",
-  "phone": "03001234567",
-  "notes": "First time client"
-}
-```
+Endpoint	Happy Path	Failure Path
+POST /auth/signup	Valid signup → 201	Invalid data → 400
+POST /auth/login	Valid credentials → 200	Wrong password → 401
+GET /services/:id/reviews	Existing service → 200	Missing service → 404
+POST /bookings	Authenticated request → 201	No token → 401
+GET /users/profile	Authenticated user → 200	No token → 401
 
-## Auth
+These tests cover both successful requests and expected API failures.
 
-Signup/login flow, no plaintext passwords stored anywhere (bcrypt hash only).
+5. Final Test Results
 
-**Signup**
-```
+The complete automated test suite passed successfully:
+
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Result
+
+15/15 tests passed.
+
+What Is Covered
+Unit Tests
+Booking validation.
+Role-based authorization.
+Integration Tests
+User signup.
+User login.
+JWT authentication.
+Service review retrieval.
+Booking creation.
+User profile retrieval.
+Authentication failure.
+Validation failure.
+Invalid credentials.
+Missing resources.
+What Is Not Covered
+
+The following are currently outside the automated test suite:
+
+PUT /bookings/:id
+DELETE /bookings/:id
+POST /services/:id/reviews
+POST /users/profile-picture
+Cloudinary upload/failure scenarios.
+Every possible filtering, sorting, and pagination combination.
+All possible database failure scenarios.
+
+These features may have been tested manually, but they are not included in the current automated test coverage.
+
+API Documentation
+
+The API is documented in this README.
+
+Main Endpoints
+Authentication
 POST /auth/signup
-{ "email": "you@example.com", "password": "yourpassword" }
-```
-
-**Login** - returns a JWT
-```
 POST /auth/login
-{ "email": "you@example.com", "password": "yourpassword" }
-```
-response:
-```json
-{ "message": "Login successful!", "token": "eyJhbGciOi..." }
-```
+Bookings
+GET    /bookings
+POST   /bookings
+PUT    /bookings/:id
+DELETE /bookings/:id
+Reviews
+POST /services/:id/reviews
+GET  /services/:id/reviews
+User
+GET  /users/profile
+POST /users/profile-picture
+Health Check
+GET /
 
-To hit a protected route, add this header:
-```
-Authorization: Bearer <token>
-```
+Protected endpoints require:
 
-`POST /bookings` and `DELETE /bookings/:id` require this. The rest don't.
+Authorization: Bearer <JWT_TOKEN>
 
-Token expires based on `JWT_EXPIRES_IN` in `.env` (currently 1h).
+DELETE /bookings/:id additionally requires the admin role.
 
-### Error responses
+Testing Coverage Note
 
-| Case | Status | Message |
-|---|---|---|
-| wrong email/password | 401 | Invalid email or password. |
-| no token sent | 401 | No token provided. |
-| token expired | 401 | Token has expired. Please log in again. |
-| bad/tampered token | 403 | Invalid token. |
-| email already taken | 400 | Email already in use. |
+The automated tests focus on the core functionality required for this task. The 15/15 passing result confirms that the tested scenarios are working correctly, but it does not represent complete automated coverage of the entire API.
 
-(login gives the same message whether the email doesn't exist or the password's wrong - on purpose, so you can't use it to figure out which emails are registered)
+The uncovered areas are listed above so that the scope of the test suite is clear.
 
-## Testing
+Files Changed in Task 9
+Added
+test/setup.js
+test/auth.test.js
+test/authorize.test.js
+test/bookingValidator.test.js
+.env.test
+screenshots/testing-all-tests-passed.png
+Modified
+package.json
+README.md
+Screenshot
 
-Tested manually in Postman - all CRUD routes, validation errors, and now the auth flow (signup, login, hitting protected routes with/without/with-bad tokens). Collection is in `postman/`, some screenshots in `screenshots/`.
+The final test run was captured as:
 
-Also tested that data survives a server restart, since it's actually in Postgres now instead of a JS array.
+screenshots/testing-all-tests-passed.png
 
-## Author
+It shows:
 
-Ayesha Cheema
-github.com/ayeshaacheema
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Running the Tests
+npm test
+
+Expected result:
+
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Running the Project
+npm install
+node server.js
+
+The API runs on:
+
+http://localhost:3000

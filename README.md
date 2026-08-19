@@ -169,10 +169,14 @@ The automated tests focus on the core functionality required for this task. The 
 
 ## Screenshot
 
-The final test run was captured as `screenshots/testing-all-tests-passed.png`, showing:
+The final test run:
 
+![All tests passed](screenshots/testing-all-tests-passed.png)
+
+```
 Test Suites: 3 passed, 3 total
-Tests: 15 passed, 15 total
+Tests:       15 passed, 15 total
+```
 
 
 ## Running the Tests

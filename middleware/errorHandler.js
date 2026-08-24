@@ -1,4 +1,5 @@
 const { sendError } = require("../utils/response");
+const logger = require("../utils/logger");
 
 const errorHandler = (err, req, res, next) => {
 
@@ -67,7 +68,14 @@ const errorHandler = (err, req, res, next) => {
     }
 
     // Unexpected errors
-    console.error(err);
+    logger.error(
+    {
+        err,
+        method: req.method,
+        url: req.originalUrl,
+    },
+    "Unexpected server error"
+);
 
     return sendError(
         res,

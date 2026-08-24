@@ -1,6 +1,9 @@
 require("dotenv").config();
-const cloudinary = require("./config/cloudinary");
+
 const express = require("express");
+const pinoHttp = require("pino-http");
+const logger = require("./utils/logger");
+const cloudinary = require("./config/cloudinary");
 const AppError = require("./utils/AppError");
 const errorHandler = require("./middleware/errorHandler");
 const { sendSuccess } = require("./utils/response");
@@ -29,20 +32,11 @@ const authenticateToken = require("./middleware/auth");
 
 const app = express();
 app.use(express.json());
-
-const PORT = 3000;
-
-// Request Logging Middleware
-app.use((req, res, next) => {
-    const start = Date.now();
-
-    res.on("finish", () => {
-        const duration = Date.now() - start;
-        console.log(`${req.method} ${req.originalUrl} - ${duration}ms`);
-    });
-
-    next();
-});
+app.use(
+    pinoHttp({
+        logger,
+    })
+);
 
 // Home Route
 app.get("/", (req, res) => {
@@ -51,34 +45,27 @@ app.get("/", (req, res) => {
     });
 });
 
+// Health Check
+app.get("/health", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        message: "API is healthy"
+    });
+});
+
 // GET All Bookings (supports filtering, sorting, and pagination)
 app.get(
     "/bookings",
     catchAsync(async (req, res) => {
-
-        // Read query parameters
         const { service, sortBy, order, page, limit } = req.query;
 
-        // Default sorting
         const sortField = sortBy || "id";
         const sortOrder = order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
-        // Default pagination
         const pageNumber = parseInt(page) || 1;
         const pageSize = parseInt(limit) || 10;
         const offset = (pageNumber - 1) * pageSize;
 
-        // TEMP DEBUG - remove once confirmed working
-        console.log({
-            service,
-            sortField,
-            sortOrder,
-            pageNumber,
-            pageSize,
-            offset
-        });
-
-        // Get bookings (with count for pagination metadata)
         const { rows: bookings, count: totalItems } = await Booking.findAndCountAll({
             include: [
                 {
@@ -99,7 +86,6 @@ app.get(
             offset: offset
         });
 
-        // Format response
         const formatted = bookings.map((b) => ({
             id: b.id,
             service: b.Service.name,
@@ -119,7 +105,6 @@ app.get(
                 totalPages: Math.ceil(totalItems / pageSize)
             }
         });
-
     })
 );
 
@@ -226,27 +211,22 @@ app.post(
     "/services/:id/reviews",
     validate(reviewSchema),
     catchAsync(async (req, res) => {
-        // Get the service ID from the URL
         const serviceId = req.params.id;
 
-        // Check if the service exists
         const service = await Service.findByPk(serviceId);
 
         if (!service) {
             throw new AppError("Service not found", 404);
         }
 
-        // Get review details from the request body
         const { rating, comment } = req.body;
 
-        // Create the review
         const review = await Review.create({
             serviceId,
             rating,
             comment
         });
 
-        // Send success response
         sendSuccess(res, 201, {
             message: "Review created successfully!",
             review
@@ -258,7 +238,6 @@ app.post(
 app.get(
     "/services/:id/reviews",
     catchAsync(async (req, res) => {
-
         const serviceId = req.params.id;
 
         const service = await Service.findByPk(serviceId);
@@ -272,10 +251,8 @@ app.get(
         });
 
         sendSuccess(res, 200, reviews);
-
     })
 );
-
 
 // SIGNUP
 app.post(
@@ -334,16 +311,16 @@ app.post(
         }
 
         const token = jwt.sign(
-    {
-        userId: user.id,
-        email: user.email,
-        role: user.role
-    },
-    process.env.JWT_SECRET,
-    {
-        expiresIn: process.env.JWT_EXPIRES_IN
-    }
-);
+            {
+                userId: user.id,
+                email: user.email,
+                role: user.role
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: process.env.JWT_EXPIRES_IN
+            }
+        );
 
         sendSuccess(res, 200, {
             message: "Login successful!",
@@ -351,6 +328,7 @@ app.post(
         });
     })
 );
+
 // UPLOAD PROFILE PICTURE
 app.post(
     "/users/profile-picture",
@@ -378,6 +356,7 @@ app.post(
         });
     })
 );
+
 // GET CURRENT USER PROFILE
 app.get(
     "/users/profile",
@@ -402,4 +381,5 @@ app.all("/{*any}", (req, res, next) => {
 });
 
 app.use(errorHandler);
+
 module.exports = app;

@@ -415,19 +415,6 @@ https://salon-booking-api-yckd.onrender.com/health
 
 The `/health` endpoint allows the monitoring service to verify that the API is responding successfully.
 
-### UptimeRobot Screenshot
-
-Add the UptimeRobot screenshot stored in the repository here:
-
-```markdown
-![UptimeRobot Monitoring](screenshots/uptimerobot-monitor.png)
-```
-
----
-
-
----
-
 # Screenshots
 
 ## Automated Tests

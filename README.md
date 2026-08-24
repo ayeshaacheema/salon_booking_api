@@ -428,27 +428,21 @@ Add the UptimeRobot screenshot stored in the repository here:
 
 ---
 
-## Replace your entire screenshot section with this
-
-```markdown
 # Screenshots
 
 ## Automated Tests
-
 ![All Tests Passed](screenshots/integration-and-unit-tests-passed.png)
 
 ## Live Render Deployment
-
 ![Render Deployment](screenshots/render-deployment.png)
 
 ## Live Health Check
-
 ![Health Check](screenshots/health-check.png)
 
 ## UptimeRobot Monitoring
-
 ![UptimeRobot Monitoring](screenshots/uptimerobot-monitor.png)
-# Running the Project Locally
+
+## Running project locally
 
 Install dependencies:
 

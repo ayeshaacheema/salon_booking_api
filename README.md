@@ -119,16 +119,6 @@ Snapshots:   0 total
 
 **Result: 15/15 tests passed.**
 
-### Test Result Screenshot
-
-Add the test-result screenshot stored in the repository here:
-
-```markdown
-![All Tests Passed](screenshots/integration-and-unit-tests-passed.png)
-```
-
----
-
 ## What Is Covered
 
 ### Unit Tests

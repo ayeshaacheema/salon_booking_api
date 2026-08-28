@@ -965,23 +965,23 @@ screenshots/
 ```
 
 ---
-
 # Development Progress
 
-This project was developed incrementally across the backend development stages:
+This project was developed incrementally across the backend development stages, evolving from a basic CRUD API into a complete, deployed, production-oriented backend system.
 
-| Stage  | Focus                                 | Status    |
-| ------ | ------------------------------------- | --------- |
-| Week 1 | Environment, Git & first API          | Completed |
-| Week 1 | In-memory CRUD API                    | Completed |
-| Week 2 | Authentication                        | Completed |
-| Week 2 | PostgreSQL persistence                | Completed |
-| Week 3 | Validation & error handling           | Completed |
-| Week 3 | Relationships, filtering & pagination | Completed |
-| Week 4 | File uploads & storage                | Completed |
-| Week 4 | Role-based access control             | Completed |
-| Week 5 | Automated testing & API documentation | Completed |
-| Week 5 | Deployment, logging & monitoring      | Completed |
+| Stage  | Focus                                                           | Status    |
+| ------ | --------------------------------------------------------------- | --------- |
+| Week 1 | Environment, Git & first API                                    | Completed |
+| Week 1 | In-memory CRUD API                                              | Completed |
+| Week 2 | Authentication                                                  | Completed |
+| Week 2 | PostgreSQL persistence                                          | Completed |
+| Week 3 | Validation & error handling                                     | Completed |
+| Week 3 | Relationships, filtering & pagination                           | Completed |
+| Week 4 | File uploads & cloud storage                                    | Completed |
+| Week 4 | Role-based access control                                       | Completed |
+| Week 5 | Automated testing & API documentation                           | Completed |
+| Week 5 | Production deployment, logging & monitoring                     | Completed |
+| Week 6 | Capstone integration, architecture & final production readiness | Completed |
 
 ---
 

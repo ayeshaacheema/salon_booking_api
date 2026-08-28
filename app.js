@@ -11,6 +11,7 @@ const catchAsync = require("./utils/catchAsync");
 const validate = require("./middleware/validate");
 const { bookingSchema } = require("./validators/bookingValidator");
 const { reviewSchema } = require("./validators/reviewValidator");
+const { serviceSchema } = require("./validators/serviceValidator");
 const upload = require("./middleware/upload");
 const uploadToCloudinary = require("./utils/cloudinaryUpload");
 const { Op } = require("sequelize");
@@ -372,6 +373,84 @@ app.get(
 
         sendSuccess(res, 200, {
             user
+        });
+    })
+);
+
+// GET All Services
+app.get(
+    "/services",
+    catchAsync(async (req, res) => {
+        const services = await Service.findAll();
+        sendSuccess(res, 200, services);
+    })
+);
+
+// GET Service by ID
+app.get(
+    "/services/:id",
+    catchAsync(async (req, res) => {
+        const service = await Service.findByPk(req.params.id);
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+        sendSuccess(res, 200, service);
+    })
+);
+
+// CREATE Service
+app.post(
+    "/services",
+    authenticateToken,
+    authorizeRoles("admin"),
+    validate(serviceSchema),
+    catchAsync(async (req, res) => {
+        const { name, description } = req.body;
+        const service = await Service.create({ name, description });
+        sendSuccess(res, 201, {
+            message: "Service created successfully!",
+            service
+        });
+    })
+);
+
+// UPDATE Service
+app.put(
+    "/services/:id",
+    authenticateToken,
+    authorizeRoles("admin"),
+    validate(serviceSchema),
+    catchAsync(async (req, res) => {
+        const service = await Service.findByPk(req.params.id);
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+        const { name, description } = req.body;
+        service.name = name;
+        service.description = description;
+        await service.save();
+        sendSuccess(res, 200, {
+            message: "Service updated successfully!",
+            service
+        });
+    })
+);
+
+// DELETE Service
+app.delete(
+    "/services/:id",
+    authenticateToken,
+    authorizeRoles("admin"),
+    catchAsync(async (req, res) => {
+        const service = await Service.findByPk(req.params.id);
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+        // Need to verify if bookings are handled properly. 
+        // Sequelize default is usually SET NULL or CASCADE.
+        await service.destroy();
+        sendSuccess(res, 200, {
+            message: "Service deleted successfully!"
         });
     })
 );

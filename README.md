@@ -168,6 +168,16 @@ POST /auth/signup
 POST /auth/login
 ```
 
+## Services
+
+```text
+GET    /services
+GET    /services/:id
+POST   /services
+PUT    /services/:id
+DELETE /services/:id
+```
+
 ## Bookings
 
 ```text
@@ -211,7 +221,7 @@ Protected endpoints require:
 Authorization: Bearer <JWT_TOKEN>
 ```
 
-`DELETE /bookings/:id` additionally requires the `admin` role.
+`POST /services`, `PUT /services/:id`, `DELETE /services/:id`, and `DELETE /bookings/:id` additionally require the `admin` role.
 
 ---
 
